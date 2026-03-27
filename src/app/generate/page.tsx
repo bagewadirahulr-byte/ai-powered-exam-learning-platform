@@ -10,6 +10,7 @@ type ContentType = "notes" | "quiz" | "flashcards" | "qna";
 export default function GeneratePage() {
   const [topic, setTopic] = useState("");
   const [type, setType] = useState<ContentType>("notes");
+  const [level, setLevel] = useState("Intermediate");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -94,6 +95,7 @@ export default function GeneratePage() {
               What do you want to learn?
             </label>
             <input 
+              name="topic"
               type="text" 
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -126,6 +128,32 @@ export default function GeneratePage() {
                 </button>
               ))}
             </div>
+            <input type="hidden" name="type" value={type} />
+          </div>
+
+          {/* Level Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Difficulty Level
+            </label>
+            <div className="flex gap-3">
+              {['Beginner', 'Intermediate', 'Advanced'].map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLevel(l)}
+                  className={`flex-1 rounded-lg border p-3 text-sm font-medium transition-all ${
+                    level === l 
+                      ? 'bg-blue-600/20 border-blue-500 text-blue-400' 
+                      : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
+                  }`}
+                  disabled={loading}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+            <input type="hidden" name="level" value={level} />
           </div>
 
           {/* Submit Button */}
