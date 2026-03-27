@@ -17,7 +17,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIza_placeho
  */
 export async function generateContentText(prompt: string): Promise<string> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
   });
 
   const result = await model.generateContent(prompt);
@@ -30,7 +30,7 @@ export async function generateContentText(prompt: string): Promise<string> {
  */
 export async function generateContentJSON(prompt: string): Promise<unknown> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
     generationConfig: {
       responseMimeType: "application/json",
     },
