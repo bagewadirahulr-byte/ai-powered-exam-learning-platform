@@ -28,8 +28,18 @@ export async function generateContent(formData: FormData) {
   }
 
   // 3. Trigger Background Generation (Inngest)
-  const prompt = `Generate comprehensive ${type} for the topic: "${topic}" at level: "${level}". 
-    Format the response as JSON.`;
+  const prompts = {
+    notes: `Generate comprehensive study notes for the topic: "${topic}" at level: "${level}". 
+      Respond with a JSON object containing a "sections" array. Each section should have a "heading" and "content" (string).`,
+    quiz: `Generate a multiple-choice quiz for the topic: "${topic}" at level: "${level}". 
+      Respond with a JSON object containing a "questions" array. Each question should have "question", "options" (array of 4 strings), "correctAnswer" (string, must match one of the options), and "explanation".`,
+    flashcards: `Generate study flashcards for the topic: "${topic}" at level: "${level}". 
+      Respond with a JSON object containing a "cards" array. Each card should have a "front" (question/term) and "back" (answer/definition).`,
+    qna: `Generate detailed Questions and Answers for the topic: "${topic}" at level: "${level}". 
+      Respond with a JSON object containing a "pairs" array. Each pair should have a "question" and "answer".`,
+  };
+
+  const prompt = prompts[type as keyof typeof prompts];
 
   await inngest.send({
     name: "exam/generate.content",
