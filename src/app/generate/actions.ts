@@ -41,15 +41,24 @@ export async function generateContent(formData: FormData) {
 
   const prompt = prompts[type as keyof typeof prompts];
 
-  await inngest.send({
-    name: "exam/generate.content",
-    data: {
-      userId: user.id,
-      topic,
-      type,
-      prompt,
-    },
-  });
+  console.log(`[Action] Triggering Inngest with Event: exam/generate.content`);
+  console.log(`[Action] Event Key Present: ${!!process.env.INNGEST_EVENT_KEY}`);
+  
+  try {
+    const result = await inngest.send({
+      name: "exam/generate.content",
+      data: {
+        userId: user.id,
+        topic,
+        type,
+        prompt,
+      },
+    });
+    console.log(`[Action] Inngest send result:`, JSON.stringify(result));
+  } catch (err) {
+    console.error(`[Action] Inngest send FAILED:`, err);
+    throw err;
+  }
 
   revalidatePath("/dashboard");
   return { success: true, message: "Generation started! Check your dashboard in a few seconds." };
