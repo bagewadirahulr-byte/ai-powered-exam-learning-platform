@@ -11,6 +11,8 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { CONTENT_TYPES } from "@/config/constants";
 
+export const dynamic = "force-dynamic";
+
 type GeneratedData = {
   title?: string;
   sections?: { heading: string; content: string }[];
