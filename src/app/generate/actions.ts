@@ -64,6 +64,10 @@ export async function generateContent(formData: FormData) {
     return { success: true, contentId: newContent.id };
   } catch (err) {
     console.error(`[Action] Generation FAILED:`, err);
-    throw err;
+    // Return the exact error message so the user can see if it's an OpenAI quota/key issue
+    return { 
+      success: false, 
+      message: err instanceof Error ? err.message : "Failed to generate content." 
+    };
   }
 }
