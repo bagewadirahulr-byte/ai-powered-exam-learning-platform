@@ -19,14 +19,15 @@ type GeneratedData = {
   pairs?: { question: string; answer: string }[];
 };
 
-export default async function ContentPage({ params }: { params: { id: string } }) {
+export default async function ContentPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const clerkUser = await currentUser();
   if (!clerkUser) redirect("/sign-in");
   
   const dbUser = await getUserByClerkId(clerkUser.id);
   if (!dbUser) redirect("/dashboard");
   
-  const contentItem = await getContentById(params.id);
+  const contentItem = await getContentById(id);
   
   // Security check: User can only view their own content
   if (!contentItem || contentItem.userId !== dbUser.id) {
