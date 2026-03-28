@@ -2,7 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { getUserByClerkId, getUserCredits, saveGeneratedContent, deductCredits } from "@/lib/db/queries";
 import { revalidatePath } from "next/cache";
-import { generateContentJSON } from "@/lib/gemini";
+import { generateContentJSON } from "@/lib/openai";
 
 /**
  * Server Action to trigger AI study material generation synchronously.
