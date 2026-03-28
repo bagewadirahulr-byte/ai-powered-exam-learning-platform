@@ -29,15 +29,12 @@ export default function GeneratePage() {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
       const res = await generateContent(formData);
       
-      if (res.success) {
-        // Small delay for effect and to let Inngest start
-        setTimeout(() => {
-          setLoading(false);
-          router.push("/dashboard?status=started");
-        }, 2000);
+      if (res.success && res.contentId) {
+        // Redirect directly to the newly generated content!
+        router.push(`/dashboard/content/${res.contentId}`);
       } else {
-        // Handle cases where success is false but no error was thrown (e.g., API returned an error message)
-        setError(res.message || "Failed to generate study material.");
+        // Handle cases where success is false but no error was thrown
+        setError("Failed to generate study material.");
         setLoading(false);
       }
     } catch (error) {
