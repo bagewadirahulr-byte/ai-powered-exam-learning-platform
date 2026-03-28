@@ -34,7 +34,7 @@ export default function GeneratePage() {
         router.push(`/dashboard/content/${res.contentId}`);
       } else {
         // Handle cases where success is false but no error was thrown
-        setError("Failed to generate study material.");
+        setError(res.message || "Failed to generate study material.");
         setLoading(false);
       }
     } catch (error) {
