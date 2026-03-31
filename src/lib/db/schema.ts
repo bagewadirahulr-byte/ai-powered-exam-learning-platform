@@ -16,8 +16,9 @@ import {
 // --- Enums ---
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "free",
-  "pro",
-  "premium",
+  "monthly",
+  "half_yearly",
+  "annual",
 ]);
 
 export const contentTypeEnum = pgEnum("content_type", [
@@ -49,7 +50,7 @@ export const generatedContent = pgTable("generated_content", {
     .references(() => users.id, { onDelete: "cascade" }),
   type: contentTypeEnum("type").notNull(),
   topic: text("topic").notNull(),
-  content: jsonb("content").notNull(), // Stores the AI generated JSON
+  content: jsonb("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -59,9 +60,9 @@ export const credits = pgTable("credits", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  amount: integer("amount").notNull(), // Positive for additions, negative for deductions
-  reason: text("reason").notNull(),    // e.g., 'Signup bonus', 'Notes generation'
-  stripeSessionId: text("stripe_session_id").unique(), // For idempotency (prevent double crediting)
+  amount: integer("amount").notNull(),
+  reason: text("reason").notNull(),
+  razorpayPaymentId: text("razorpay_payment_id").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -72,8 +73,8 @@ export const subscriptions = pgTable("subscriptions", {
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
-  stripeCustomerId: text("stripe_customer_id").unique(),
-  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  razorpayOrderId: text("razorpay_order_id"),
+  razorpayPaymentId: text("razorpay_payment_id"),
   plan: subscriptionStatusEnum("plan").notNull().default("free"),
   currentPeriodEnd: timestamp("current_period_end"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

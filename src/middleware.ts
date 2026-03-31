@@ -5,12 +5,13 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/stripe/webhook(.*)", // Ensure webhooks are public
+  "/pricing",
+  "/api/razorpay(.*)", // Razorpay API routes
 ]);
 
 /**
  * Next.js Middleware using Clerk for authentication.
- * Protecs all routes EXCEPT the public ones defined above.
+ * Protects all routes EXCEPT the public ones defined above.
  */
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {

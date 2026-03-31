@@ -24,7 +24,7 @@ export interface GeneratedContent {
   userId: string;
   type: ContentType;
   topic: string;
-  content: string; // JSON string of the generated content
+  content: string;
   createdAt: Date;
 }
 
@@ -32,7 +32,7 @@ export interface GeneratedContent {
 export interface QuizQuestion {
   question: string;
   options: string[];
-  correctAnswer: number; // index of the correct option
+  correctAnswer: number;
   explanation: string;
 }
 
@@ -52,23 +52,39 @@ export interface QnAItem {
 export interface CreditTransaction {
   id: string;
   userId: string;
-  amount: number; // positive = added, negative = used
+  amount: number;
   reason: string;
   createdAt: Date;
 }
 
 // --- Subscription Types ---
-export type SubscriptionStatus = "free" | "pro" | "premium";
+export type SubscriptionStatus = "free" | "monthly" | "half_yearly" | "annual";
 
 export interface Subscription {
   id: string;
   userId: string;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   plan: SubscriptionStatus;
   currentPeriodEnd?: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// --- Razorpay Types ---
+export interface RazorpayOrderResponse {
+  orderId: string;
+  amount: number;
+  currency: string;
+  planId: string;
+  keyId: string;
+}
+
+export interface RazorpayPaymentVerification {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  planId: string;
 }
 
 // --- API Response Types ---
@@ -84,5 +100,5 @@ export interface GenerateRequest {
   topic: string;
   type: ContentType;
   difficulty?: "easy" | "medium" | "hard";
-  count?: number; // number of items to generate (e.g., 10 quiz questions)
+  count?: number;
 }

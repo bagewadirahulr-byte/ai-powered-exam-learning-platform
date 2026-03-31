@@ -38,39 +38,72 @@ export const CONTENT_TYPES = {
 // --- Subscription Plans ---
 export const PLANS = {
   free: {
+    id: "free",
     name: "Free",
     price: 0,
+    duration: "forever",
+    durationMonths: 0,
     credits: 5,
+    creditsLabel: "5 credits (one-time)",
     features: [
-      "5 AI generations",
-      "Notes, Quizzes, Flashcards",
+      "5 AI generations total",
+      "Notes, Quizzes, Flashcards, Q&A",
       "Basic support",
     ],
   },
-  pro: {
-    name: "Pro",
-    price: 499, // in INR (₹499/month)
+  monthly: {
+    id: "monthly",
+    name: "Monthly",
+    price: 199,
+    duration: "1 month",
+    durationMonths: 1,
     credits: 50,
+    creditsLabel: "50 credits/month",
     features: [
       "50 AI generations/month",
       "All content types",
-      "Priority support",
       "PDF export",
+      "Priority support",
     ],
   },
-  premium: {
-    name: "Premium",
-    price: 999, // in INR (₹999/month)
+  half_yearly: {
+    id: "half_yearly",
+    name: "Half-Yearly",
+    price: 499,
+    duration: "6 months",
+    durationMonths: 6,
+    credits: 50,
+    creditsLabel: "50 credits/month",
+    savings: "Save ₹695",
+    features: [
+      "50 AI generations/month",
+      "All content types",
+      "PDF export",
+      "Priority support",
+      "Save ₹695 vs monthly",
+    ],
+  },
+  annual: {
+    id: "annual",
+    name: "Annual",
+    price: 999,
+    duration: "12 months",
+    durationMonths: 12,
     credits: -1, // unlimited
+    creditsLabel: "Unlimited credits",
+    savings: "Save ₹1,389",
     features: [
       "Unlimited AI generations",
       "All content types",
-      "Priority support",
       "PDF export",
+      "Priority support",
       "Custom prompts",
+      "Save ₹1,389 vs monthly",
     ],
   },
 } as const;
+
+export type PlanId = keyof typeof PLANS;
 
 // --- App Metadata ---
 export const APP_NAME = "ExamAI";

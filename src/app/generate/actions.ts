@@ -21,10 +21,12 @@ export async function generateContent(formData: FormData) {
   const user = await getUserByClerkId(clerkId);
   if (!user) throw new Error("User not found");
 
-  // 2. Check Credits
-  const currentCredits = await getUserCredits(user.id);
-  if (currentCredits < 1) {
-    throw new Error("Insufficient credits. Please upgrade for more.");
+  // 2. Check Credits (Bypass if Annual Plan)
+  if (user.subscriptionStatus !== 'annual') {
+    const currentCredits = await getUserCredits(user.id);
+    if (currentCredits < 1) {
+      throw new Error("Insufficient credits. Please upgrade for more.");
+    }
   }
 
   // 3. Generate Content Synchronously (Gemini)
@@ -54,8 +56,10 @@ export async function generateContent(formData: FormData) {
       content,
     });
 
-    // Deduct Credit
-    await deductCredits(user.id, 1, `Generated ${type}: ${topic}`);
+    // Deduct Credit (Skip if Annual Plan)
+    if (user.subscriptionStatus !== 'annual') {
+      await deductCredits(user.id, 1, `Generated ${type}: ${topic}`);
+    }
 
     console.log(`[Action] Generation successful: ID ${newContent.id}`);
 

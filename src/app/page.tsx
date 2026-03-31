@@ -16,18 +16,22 @@ import { PLANS } from "@/config/constants";
 function PricingCard({
   name,
   price,
+  duration,
   features,
   popular = false,
+  best = false,
 }: {
   name: string;
   price: number;
+  duration: string;
   features: readonly string[];
   popular?: boolean;
+  best?: boolean;
 }) {
   return (
     <div
       className={`glass-card relative p-8 transition-all duration-300 hover:scale-[1.02] ${
-        popular ? "border-blue-500/50 glow-blue" : ""
+        popular ? "border-blue-500/50 glow-blue" : best ? "border-purple-500/50 glow-purple" : ""
       }`}
     >
       {/* Popular badge */}
@@ -36,13 +40,18 @@ function PricingCard({
           Most Popular
         </div>
       )}
+      {best && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 px-4 py-1 text-xs font-semibold text-white">
+          Best Value
+        </div>
+      )}
 
       <h3 className="mb-2 text-xl font-bold text-white">{name}</h3>
       <div className="mb-6">
         <span className="text-4xl font-bold text-white">
           {price === 0 ? "Free" : `₹${price}`}
         </span>
-        {price > 0 && <span className="text-gray-400">/month</span>}
+        {price > 0 && <span className="text-gray-400">/{duration}</span>}
       </div>
 
       <ul className="mb-8 space-y-3">
@@ -54,13 +63,15 @@ function PricingCard({
         ))}
       </ul>
 
-      <Button
-        variant={popular ? "primary" : "outline"}
-        size="md"
-        className="w-full"
-      >
-        {price === 0 ? "Get Started Free" : "Subscribe Now"}
-      </Button>
+      <Link href="/pricing">
+        <Button
+          variant={popular ? "primary" : "outline"}
+          size="md"
+          className="w-full"
+        >
+          {price === 0 ? "Get Started Free" : "Subscribe Now"}
+        </Button>
+      </Link>
     </div>
   );
 }
@@ -446,22 +457,32 @@ export default function LandingPage() {
           </div>
 
           {/* Pricing cards */}
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <PricingCard
               name={PLANS.free.name}
               price={PLANS.free.price}
+              duration={PLANS.free.duration}
               features={PLANS.free.features}
             />
             <PricingCard
-              name={PLANS.pro.name}
-              price={PLANS.pro.price}
-              features={PLANS.pro.features}
+              name={PLANS.monthly.name}
+              price={PLANS.monthly.price}
+              duration={PLANS.monthly.duration}
+              features={PLANS.monthly.features}
+            />
+            <PricingCard
+              name={PLANS.half_yearly.name}
+              price={PLANS.half_yearly.price}
+              duration={PLANS.half_yearly.duration}
+              features={PLANS.half_yearly.features}
               popular
             />
             <PricingCard
-              name={PLANS.premium.name}
-              price={PLANS.premium.price}
-              features={PLANS.premium.features}
+              name={PLANS.annual.name}
+              price={PLANS.annual.price}
+              duration={PLANS.annual.duration}
+              features={PLANS.annual.features}
+              best
             />
           </div>
         </div>

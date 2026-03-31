@@ -88,7 +88,7 @@ export default async function DashboardPage() {
                   Credits Remaining
                 </p>
                 <p className="mt-1 text-2xl font-bold text-green-400">
-                  {credits}
+                  {dbUser?.subscriptionStatus === 'annual' ? 'Unlimited ∞' : credits}
                 </p>
               </div>
               {/* Plan */}
@@ -97,7 +97,9 @@ export default async function DashboardPage() {
                   Plan
                 </p>
                 <p className="mt-1 inline-block rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400">
-                  {dbUser?.subscriptionStatus === 'pro' ? 'Pro' : 'Free'}
+                  {dbUser?.subscriptionStatus === 'monthly' ? '📦 Monthly' :
+                   dbUser?.subscriptionStatus === 'half_yearly' ? '⭐ Half-Yearly' :
+                   dbUser?.subscriptionStatus === 'annual' ? '💎 Annual' : '🆓 Free'}
                 </p>
               </div>
             </div>
