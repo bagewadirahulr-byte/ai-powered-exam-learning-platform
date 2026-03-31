@@ -1,38 +1,96 @@
-# ai-powered-exam-learning-platform
+# ExamAI — AI-Powered Exam Learning Platform
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+> Generate comprehensive study notes, quizzes, flashcards, and Q&A instantly using Google Gemini AI.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Framework** | Next.js 16 (App Router) |
+| **Language** | TypeScript |
+| **AI** | Google Gemini 2.5 Flash (free tier) |
+| **Database** | Neon PostgreSQL + Drizzle ORM |
+| **Auth** | Clerk |
+| **Payments** | Stripe |
+| **Styling** | Tailwind CSS |
+| **Hosting** | Vercel |
+
+## Features
+
+- 🧠 **AI Content Generation** — Notes, Quizzes, Flashcards, Q&A
+- 🎯 **Difficulty Levels** — Beginner, Intermediate, Advanced
+- 📄 **PDF Export** — Download study materials as PDF
+- 🔐 **Auth** — Sign in/up with Clerk
+- 💳 **Credits System** — Free tier + paid plans via Stripe
+- 📱 **Responsive** — Works on desktop and mobile
+
+## Project Structure
+
+```
+src/
+├── app/                        # Next.js App Router
+│   ├── (auth)/                 # Sign-in / Sign-up pages
+│   ├── api/stripe/             # Stripe checkout + webhook
+│   ├── dashboard/              # Dashboard + content viewer
+│   ├── generate/               # AI generation page + actions
+│   ├── pricing/                # Pricing page
+│   ├── layout.tsx              # Root layout (Clerk + fonts)
+│   ├── page.tsx                # Landing page
+│   └── globals.css             # Global styles + design tokens
+├── components/
+│   ├── layout/                 # Navbar, Footer
+│   └── ui/                     # Button, Skeleton, PDF components
+├── config/
+│   └── constants.ts            # Credits, plans, content types
+├── lib/
+│   ├── db/                     # Schema + queries (Drizzle)
+│   ├── db.ts                   # Neon connection setup
+│   ├── gemini.ts               # Gemini AI client
+│   ├── stripe.ts               # Stripe client
+│   └── utils.ts                # Utility functions
+├── types/
+│   └── index.ts                # TypeScript interfaces
+└── middleware.ts                # Clerk auth middleware
+```
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# 1. Clone the repo
+git clone https://github.com/bagewadirahulr-byte/ai-powered-exam-learning-platform.git
+cd ai-powered-exam-learning-platform
+
+# 2. Install dependencies
+npm install
+
+# 3. Set up environment variables
+cp .env.example .env.local
+# Fill in your keys (see .env.example for details)
+
+# 4. Run the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See [`.env.example`](.env.example) for all required variables:
 
-## Learn More
+- **Clerk** — Authentication (publishable + secret keys)
+- **Neon** — PostgreSQL database URL
+- **Gemini** — Google AI API key (free tier)
+- **Stripe** — Payment processing (secret + webhook + publishable keys)
 
-To learn more about Next.js, take a look at the following resources:
+## Roadmap
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- 📱 Mobile app (React Native)
+- 🗣️ Voice-based learning
+- ✍️ Handwriting recognition
+- 📅 Smart revision schedules
+- 🌐 Multi-language support
+- 🤖 Advanced AI modules
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with ❤️ by Rahul R Bagewadi
