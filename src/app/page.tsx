@@ -7,55 +7,10 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
-import { CONTENT_TYPES, PLANS } from "@/config/constants";
+import { PLANS } from "@/config/constants";
 
-// --- Feature Card Component ---
-function FeatureCard({
-  icon,
-  label,
-  description,
-  color,
-}: {
-  icon: string;
-  label: string;
-  description: string;
-  color: string;
-}) {
-  return (
-    <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
-      {/* Icon with gradient background */}
-      <div
-        className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${color} text-2xl shadow-lg`}
-      >
-        {icon}
-      </div>
-      <h3 className="mb-2 text-lg font-semibold text-white">{label}</h3>
-      <p className="text-sm leading-relaxed text-gray-400">{description}</p>
-    </div>
-  );
-}
 
-// --- Step Card Component ---
-function StepCard({
-  step,
-  title,
-  description,
-}: {
-  step: number;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="relative flex flex-col items-center text-center">
-      {/* Step number */}
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white shadow-lg shadow-blue-500/30">
-        {step}
-      </div>
-      <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
-      <p className="text-sm text-gray-400">{description}</p>
-    </div>
-  );
-}
+
 
 // --- Pricing Card Component ---
 function PricingCard({
@@ -186,23 +141,142 @@ export default function LandingPage() {
               Everything You Need to{" "}
               <span className="gradient-text">Ace Your Exams</span>
             </h2>
-            <p className="mx-auto max-w-xl text-gray-400">
-              Powered by Google&apos;s Gemini AI, our platform generates
-              high-quality study materials tailored to your needs.
+            <p className="mx-auto max-w-2xl text-gray-400">
+              Currently powered by Google&apos;s Gemini 2.5 Flash AI — our
+              platform generates high-quality, structured study materials
+              instantly. We&apos;re starting with the essentials and building
+              towards something extraordinary.
             </p>
           </div>
 
           {/* Feature cards grid */}
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {Object.values(CONTENT_TYPES).map((feature) => (
-              <FeatureCard key={feature.label} {...feature} />
-            ))}
+            {/* Notes */}
+            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-2xl shadow-lg">
+                📝
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">
+                AI Notes
+              </h3>
+              <p className="text-sm leading-relaxed text-gray-400">
+                Get comprehensive, well-structured study notes on any topic. Our
+                AI breaks down complex subjects into clear sections with
+                explanations, key points, and examples.
+              </p>
+            </div>
+
+            {/* Quiz */}
+            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-2xl shadow-lg">
+                ❓
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">
+                Smart Quizzes
+              </h3>
+              <p className="text-sm leading-relaxed text-gray-400">
+                AI-generated multiple-choice questions that test your
+                understanding. Each question comes with 4 options and the
+                correct answer — perfect for self-assessment.
+              </p>
+            </div>
+
+            {/* Flashcards */}
+            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-yellow-500 text-2xl shadow-lg">
+                🃏
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">
+                Flashcards
+              </h3>
+              <p className="text-sm leading-relaxed text-gray-400">
+                Quick revision cards with key terms and definitions. Flip
+                through AI-curated flashcards to memorize important concepts
+                before your exam.
+              </p>
+            </div>
+
+            {/* Q&A */}
+            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 text-2xl shadow-lg">
+                💬
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">
+                Q&A Pairs
+              </h3>
+              <p className="text-sm leading-relaxed text-gray-400">
+                Important exam-style questions with detailed answers. Practice
+                long-answer and short-answer questions generated specifically
+                for your topic and difficulty level.
+              </p>
+            </div>
+          </div>
+
+          {/* Difficulty Levels */}
+          <div className="mt-12 grid gap-6 sm:grid-cols-3">
+            <div className="glass-card flex items-center gap-4 p-5 transition-all duration-300 hover:border-white/20">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-500/20 text-lg">
+                🌱
+              </div>
+              <div>
+                <h4 className="font-semibold text-white">Beginner</h4>
+                <p className="text-xs text-gray-400">
+                  Simple explanations for newcomers to the topic
+                </p>
+              </div>
+            </div>
+            <div className="glass-card flex items-center gap-4 p-5 transition-all duration-300 hover:border-white/20">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-500/20 text-lg">
+                ⚡
+              </div>
+              <div>
+                <h4 className="font-semibold text-white">Intermediate</h4>
+                <p className="text-xs text-gray-400">
+                  Balanced depth for regular exam preparation
+                </p>
+              </div>
+            </div>
+            <div className="glass-card flex items-center gap-4 p-5 transition-all duration-300 hover:border-white/20">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500/20 text-lg">
+                🔥
+              </div>
+              <div>
+                <h4 className="font-semibold text-white">Advanced</h4>
+                <p className="text-xs text-gray-400">
+                  In-depth, challenging content for competitive exams
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Roadmap / Future Banner */}
+          <div className="mt-12 glass-card border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-purple-500/5 p-8 text-center">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+              Roadmap
+            </div>
+            <h3 className="mb-2 text-xl font-bold text-white">
+              This Is Just the Beginning 🚀
+            </h3>
+            <p className="mx-auto max-w-2xl text-sm text-gray-400">
+              We&apos;re currently using Gemini AI as our foundation. In the
+              future, we plan to expand ExamAI into a{" "}
+              <span className="font-medium text-blue-400">
+                full mobile app
+              </span>{" "}
+              with advanced AI modules — including AI-powered study planners,
+              voice-based learning, handwriting recognition, smart revision
+              schedules, and multi-language support. Stay tuned!
+            </p>
           </div>
         </div>
       </section>
 
       {/* ===== HOW IT WORKS SECTION ===== */}
       <section id="how-it-works" className="relative py-24 px-6">
+        {/* Background gradient */}
+        <div className="pointer-events-none absolute right-0 top-1/2 h-72 w-72 rounded-full bg-purple-600/10 blur-[100px]" />
+
         <div className="mx-auto max-w-5xl">
           {/* Section header */}
           <div className="mb-16 text-center">
@@ -210,28 +284,147 @@ export default function LandingPage() {
               How It Works
             </span>
             <h2 className="mb-4 text-4xl font-bold text-white">
-              Start Learning in{" "}
-              <span className="gradient-text">3 Simple Steps</span>
+              Your Study Guide in{" "}
+              <span className="gradient-text">4 Simple Steps</span>
             </h2>
+            <p className="mx-auto max-w-2xl text-gray-400">
+              Follow this quick guide to generate AI-powered study materials
+              tailored to your topic and skill level.
+            </p>
           </div>
 
-          {/* Steps */}
-          <div className="grid gap-12 md:grid-cols-3">
-            <StepCard
-              step={1}
-              title="Enter Your Topic"
-              description="Type any subject or topic you want to study. From Physics to History — we cover everything."
-            />
-            <StepCard
-              step={2}
-              title="Choose Content Type"
-              description="Select notes, quiz, flashcards, or Q&A. Our AI generates tailored content for your needs."
-            />
-            <StepCard
-              step={3}
-              title="Study & Ace It"
-              description="Review the AI-generated content, take quizzes, flip flashcards, and prepare with confidence."
-            />
+          {/* Steps — Vertical Timeline */}
+          <div className="relative space-y-8">
+            {/* Connecting line */}
+            <div className="absolute left-7 top-10 bottom-10 hidden w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-green-500 md:block" />
+
+            {/* Step 1: Enter Topic */}
+            <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white shadow-lg shadow-blue-500/30">
+                1
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 text-xl font-bold text-white">
+                  ✏️ Enter Your Topic
+                </h3>
+                <p className="mb-3 text-sm text-gray-400">
+                  Go to the <span className="font-medium text-blue-400">Generate</span> page
+                  from your dashboard. In the topic field, type any subject
+                  you want to study — for example:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {["Photosynthesis", "World War II", "Newton's Laws", "Data Structures", "Indian Constitution"].map((t) => (
+                    <span key={t} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Choose Content Type */}
+            <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-600 text-xl font-bold text-white shadow-lg shadow-purple-500/30">
+                2
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 text-xl font-bold text-white">
+                  📋 Choose Your Content Type
+                </h3>
+                <p className="mb-3 text-sm text-gray-400">
+                  Select the type of study material you want the AI to
+                  generate. Each type is designed for a different learning
+                  style:
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 text-center">
+                    <div className="text-2xl">📝</div>
+                    <div className="mt-1 text-xs font-medium text-blue-400">Notes</div>
+                  </div>
+                  <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-3 text-center">
+                    <div className="text-2xl">❓</div>
+                    <div className="mt-1 text-xs font-medium text-purple-400">Quiz</div>
+                  </div>
+                  <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-3 text-center">
+                    <div className="text-2xl">🃏</div>
+                    <div className="mt-1 text-xs font-medium text-orange-400">Flashcards</div>
+                  </div>
+                  <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-center">
+                    <div className="text-2xl">💬</div>
+                    <div className="mt-1 text-xs font-medium text-green-400">Q&A</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Select Difficulty */}
+            <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-600 text-xl font-bold text-white shadow-lg shadow-yellow-500/30">
+                3
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 text-xl font-bold text-white">
+                  🎯 Select Difficulty Level
+                </h3>
+                <p className="mb-3 text-sm text-gray-400">
+                  Pick a difficulty that matches your current understanding.
+                  This helps the AI adjust the complexity and depth of the
+                  content:
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2">
+                    <span>🌱</span>
+                    <span className="text-sm font-medium text-green-400">Beginner</span>
+                    <span className="text-xs text-gray-500">— Easy, simple terms</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-4 py-2">
+                    <span>⚡</span>
+                    <span className="text-sm font-medium text-yellow-400">Intermediate</span>
+                    <span className="text-xs text-gray-500">— Balanced depth</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2">
+                    <span>🔥</span>
+                    <span className="text-sm font-medium text-red-400">Advanced</span>
+                    <span className="text-xs text-gray-500">— Competitive level</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4: Generate & Study */}
+            <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-xl font-bold text-white shadow-lg shadow-green-500/30">
+                4
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 text-xl font-bold text-white">
+                  🚀 Generate & Start Studying
+                </h3>
+                <p className="mb-3 text-sm text-gray-400">
+                  Hit the <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-400">Generate Content (1 Credit)</span> button
+                  and wait a few seconds. The AI will create your study
+                  material instantly. You can then:
+                </p>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-400">✓</span>
+                    Read through AI-generated notes with clear sections
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-400">✓</span>
+                    Take interactive quizzes to test your knowledge
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-400">✓</span>
+                    Flip through flashcards for quick revision
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-400">✓</span>
+                    Download content as PDF for offline study
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -29,13 +29,13 @@ export default function Navbar() {
         {/* Navigation Links */}
         <div className="hidden items-center gap-8 md:flex">
           <Link
-            href="#features"
+            href="/#features"
             className="text-sm text-gray-400 transition-colors hover:text-white"
           >
             Features
           </Link>
           <Link
-            href="#how-it-works"
+            href="/#how-it-works"
             className="text-sm text-gray-400 transition-colors hover:text-white"
           >
             How It Works
