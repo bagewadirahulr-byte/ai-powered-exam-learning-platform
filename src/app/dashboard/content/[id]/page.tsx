@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { CONTENT_TYPES } from "@/config/constants";
+import InteractiveQuiz from "@/components/ui/InteractiveQuiz";
 
 export const dynamic = "force-dynamic";
 
@@ -56,36 +57,7 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
         );
 
       case "quiz":
-        return (
-          <div className="space-y-6">
-            {data.questions?.map((q, idx) => (
-              <div key={idx} className="glass-card p-6">
-                <h3 className="text-lg font-medium text-white mb-4">
-                  <span className="text-indigo-400 mr-2">{idx + 1}.</span> 
-                  {q.question}
-                </h3>
-                <div className="grid gap-3 sm:grid-cols-2 mb-4">
-                  {q.options?.map((opt, optIdx) => (
-                    <div 
-                      key={optIdx} 
-                      className={`p-3 rounded-lg border text-sm ${
-                        opt === q.correctAnswer 
-                          ? 'bg-green-500/10 border-green-500/50 text-green-200'
-                          : 'bg-gray-800/50 border-gray-700 text-gray-300'
-                      }`}
-                    >
-                      {opt}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                  <p className="text-sm font-semibold text-indigo-300 mb-1">Explanation:</p>
-                  <p className="text-sm text-gray-300">{q.explanation}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        );
+        return <InteractiveQuiz questions={data.questions || []} />;
 
       case "flashcards":
         return (
