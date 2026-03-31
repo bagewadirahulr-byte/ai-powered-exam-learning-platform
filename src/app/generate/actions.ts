@@ -2,7 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { getUserByClerkId, getUserCredits, saveGeneratedContent, deductCredits } from "@/lib/db/queries";
 import { revalidatePath } from "next/cache";
-import { generateContentJSON } from "@/lib/openai";
+import { generateContentJSON } from "@/lib/gemini";
 
 /**
  * Server Action to trigger AI study material generation synchronously.
@@ -64,7 +64,7 @@ export async function generateContent(formData: FormData) {
     return { success: true, contentId: newContent.id };
   } catch (err) {
     console.error(`[Action] Generation FAILED:`, err);
-    // Return the exact error message so the user can see if it's an OpenAI quota/key issue
+    // Return the exact error message so the user can see if it's an API quota/key issue
     return { 
       success: false, 
       message: err instanceof Error ? err.message : "Failed to generate content." 

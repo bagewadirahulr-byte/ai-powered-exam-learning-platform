@@ -1,4 +1,5 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import { db } from "./src/lib/db";
 import { users, credits, generatedContent } from "./src/lib/db/schema";
 import { getUserByClerkId, getUserCredits, createUser } from "./src/lib/db/queries";

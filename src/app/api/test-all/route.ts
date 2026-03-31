@@ -2,13 +2,11 @@
 import { NextResponse } from "next/server";
 import { generateContentJSON } from "@/lib/gemini";
 import { db } from "@/lib/db";
-import { users, generatedContent, credits } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { users, generatedContent } from "@/lib/db/schema";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const topic = searchParams.get("topic") || "Photosynthesis";
-  const type = "notes";
 
   console.log("--- STARTING END-TO-END TEST ---");
   
@@ -42,11 +40,13 @@ export async function GET(req: Request) {
       data: aiContent
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
     console.error("TEST FAILED:", error);
     return NextResponse.json({ 
-      error: error.message, 
-      stack: error.stack 
+      error: errMsg, 
+      stack: errStack 
     }, { status: 500 });
   }
 }

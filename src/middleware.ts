@@ -6,7 +6,6 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/stripe/webhook(.*)", // Ensure webhooks are public
-  "/api/inngest(.*)",        // Allow Inngest to communicate
 ]);
 
 /**
