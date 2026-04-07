@@ -109,4 +109,8 @@ export type PlanId = keyof typeof PLANS;
 export const APP_NAME = "ExamAI";
 export const APP_DESCRIPTION =
   "AI-Powered Exam Learning Platform — Generate notes, quizzes, flashcards, and Q&A using AI for exam preparation.";
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+export const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : "http://localhost:3000");

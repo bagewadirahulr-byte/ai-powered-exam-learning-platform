@@ -6,7 +6,8 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/pricing",
-  "/api/razorpay(.*)", // Razorpay API routes
+  "/api/razorpay(.*)",  // Razorpay API routes
+  "/api/webhook(.*)",   // Webhook routes (Razorpay webhooks don't carry auth)
 ]);
 
 /**

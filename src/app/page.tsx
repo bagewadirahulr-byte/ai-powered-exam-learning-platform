@@ -160,68 +160,72 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Feature cards grid */}
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Notes */}
-            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-2xl shadow-lg">
-                📝
+          {/* Bento Grid Features */}
+          <div className="grid gap-6 md:grid-cols-6 md:grid-rows-2 h-auto">
+            {/* AI Notes — Large Card */}
+            <div className="md:col-span-4 md:row-span-1 glass-card group p-8 flex flex-col md:flex-row gap-8 transition-all hover:border-blue-500/30 overflow-hidden relative">
+              <div className="absolute -right-8 -bottom-8 h-48 w-48 bg-blue-600/10 rounded-full blur-3xl group-hover:bg-blue-600/20 transition-colors" />
+              <div className="flex-1 relative z-10">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-3xl shadow-xl shadow-blue-500/20 group-hover:scale-110 transition-transform">
+                    📝
+                </div>
+                <h3 className="mb-3 text-2xl font-bold text-white">Advanced AI Notes</h3>
+                <p className="text-gray-400 leading-relaxed max-w-md">
+                    Our AI generates high-fidelity, structured study notes. Complex subjects are broken down into logical sections with clear explanations, key terminology, and real-world examples.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                    <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20">Structured</span>
+                    <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20">Comprehensive</span>
+                </div>
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">
-                AI Notes
-              </h3>
-              <p className="text-sm leading-relaxed text-gray-400">
-                Get comprehensive, well-structured study notes on any topic. Our
-                AI breaks down complex subjects into clear sections with
-                explanations, key points, and examples.
-              </p>
+              <div className="hidden md:flex flex-1 items-center justify-center relative">
+                  <div className="w-full rotate-2 rounded-xl border border-white/5 bg-white/5 p-4 shadow-2xl group-hover:rotate-0 transition-transform duration-500">
+                      <div className="h-4 w-2/3 bg-white/10 rounded mb-3" />
+                      <div className="h-3 w-full bg-white/5 rounded mb-2" />
+                      <div className="h-3 w-full bg-white/5 rounded mb-2" />
+                      <div className="h-3 w-4/5 bg-white/5 rounded" />
+                  </div>
+              </div>
             </div>
 
-            {/* Quiz */}
-            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-2xl shadow-lg">
+            {/* Smart Quizzes */}
+            <div className="md:col-span-2 md:row-span-1 glass-card group p-8 flex flex-col transition-all hover:border-purple-500/30">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-3xl shadow-xl shadow-purple-500/20 group-hover:scale-110 transition-transform">
                 ❓
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">
-                Smart Quizzes
-              </h3>
-              <p className="text-sm leading-relaxed text-gray-400">
-                AI-generated multiple-choice questions that test your
-                understanding. Each question comes with 4 options and the
-                correct answer — perfect for self-assessment.
+              <h3 className="mb-3 text-xl font-bold text-white">Interactive Quizzes</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                Test your mastery with AI-generated multiple-choice questions. Get instant feedback and explanations for every answer.
               </p>
             </div>
 
             {/* Flashcards */}
-            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-yellow-500 text-2xl shadow-lg">
+            <div className="md:col-span-3 md:row-span-1 glass-card group p-8 flex flex-col transition-all hover:border-orange-500/30">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-500 text-3xl shadow-xl shadow-orange-500/20 group-hover:scale-110 transition-transform">
                 🃏
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">
-                Flashcards
-              </h3>
-              <p className="text-sm leading-relaxed text-gray-400">
-                Quick revision cards with key terms and definitions. Flip
-                through AI-curated flashcards to memorize important concepts
-                before your exam.
+              <h3 className="mb-3 text-xl font-bold text-white">Smart Flashcards</h3>
+              <p className="text-sm text-gray-400 leading-relaxed mb-4">
+                Master terminology with 3D-flipping flashcards. Optimized for quick revision and long-term retention.
               </p>
+              <div className="mt-auto flex gap-2">
+                  <div className="h-8 w-12 rounded bg-orange-500/10 border border-orange-500/20 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">🔄</div>
+                  <div className="h-8 flex-1 rounded bg-orange-500/5 border border-orange-500/10" />
+              </div>
             </div>
 
-            {/* Q&A */}
-            <div className="glass-card group p-6 transition-all duration-300 hover:scale-[1.02] hover:border-white/20">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 text-2xl shadow-lg">
+            {/* Q&A Pairs */}
+            <div className="md:col-span-3 md:row-span-1 glass-card group p-8 flex flex-col transition-all hover:border-green-500/30">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 text-3xl shadow-xl shadow-green-500/20 group-hover:scale-110 transition-transform">
                 💬
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">
-                Q&A Pairs
-              </h3>
-              <p className="text-sm leading-relaxed text-gray-400">
-                Important exam-style questions with detailed answers. Practice
-                long-answer and short-answer questions generated specifically
-                for your topic and difficulty level.
+              <h3 className="mb-3 text-xl font-bold text-white">Exam Q&A</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                Detailed exam-style question and answer pairs designed specifically for your target difficulty level. Perfect for theory practice.
               </p>
             </div>
           </div>
+
 
           {/* Difficulty Levels */}
           <div className="mt-12 grid gap-6 sm:grid-cols-3">

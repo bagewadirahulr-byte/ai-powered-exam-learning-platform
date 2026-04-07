@@ -8,7 +8,7 @@ import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import "./globals.css";
-import { APP_NAME, APP_DESCRIPTION } from "@/config/constants";
+import { APP_NAME, APP_DESCRIPTION, APP_URL } from "@/config/constants";
 
 // --- Google Font: Inter ---
 const inter = Inter({
@@ -19,6 +19,7 @@ const inter = Inter({
 
 // --- SEO Metadata ---
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: {
     default: `${APP_NAME} — AI-Powered Exam Learning Platform`,
     template: `%s | ${APP_NAME}`,

@@ -11,6 +11,8 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { CONTENT_TYPES } from "@/config/constants";
 import InteractiveQuiz from "@/components/ui/InteractiveQuiz";
+import Flashcard from "@/components/ui/Flashcard";
+
 
 export const dynamic = "force-dynamic";
 
@@ -63,17 +65,11 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
         return (
           <div className="grid gap-6 sm:grid-cols-2">
             {data.cards?.map((card, idx) => (
-              <div key={idx} className="glass-card group perspective flex h-64 flex-col justify-center text-center">
-                <div className="p-6 h-1/2 flex items-center justify-center border-b border-gray-700/50">
-                  <h3 className="text-lg font-semibold text-white">{card.front}</h3>
-                </div>
-                <div className="p-6 h-1/2 flex items-center justify-center bg-gray-800/50 rounded-b-2xl">
-                  <p className="text-sm text-gray-300">{card.back}</p>
-                </div>
-              </div>
+              <Flashcard key={idx} front={card.front} back={card.back} />
             ))}
           </div>
         );
+
 
       case "qna":
         return (
@@ -115,13 +111,15 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
               Back to Dashboard
             </Link>
             
-            {/* PDF Download Button (Only for Notes currently) */}
-            {type === "notes" && data.sections && (
+            {/* PDF Download Button for all types */}
+            {data && (
               <PDFDownload 
-                title={data.title || topic} 
-                sections={data.sections} 
+                title={topic} 
+                type={type as "notes" | "quiz" | "flashcards" | "qna"}
+                data={data} 
               />
             )}
+
           </div>
 
           <header className="mb-10 text-center sm:text-left">

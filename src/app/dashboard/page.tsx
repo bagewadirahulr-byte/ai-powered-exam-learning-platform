@@ -5,12 +5,13 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
-import Button from "@/components/ui/Button";
 import Navbar from "@/components/layout/Navbar";
 import { CONTENT_TYPES, FREE_CREDITS } from "@/config/constants";
 import { getUserByClerkId, getUserCredits, getUserContent, createUser } from "@/lib/db/queries";
+import DashboardContent from "@/components/dashboard/DashboardContent";
 
 export default async function DashboardPage() {
+
   // --- Get the current user from Clerk (server-side) ---
   const clerkUser = await currentUser();
 
@@ -131,58 +132,14 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* ===== Recent Content ===== */}
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-white">
-              Recent Content
-            </h2>
-            
-            {contentHistory.length === 0 ? (
-              <div className="glass-card flex flex-col items-center p-12 text-center">
-                <div className="mb-4 text-4xl">📚</div>
-                <h3 className="mb-2 text-lg font-semibold text-white">
-                  No content yet
-                </h3>
-                <p className="mb-6 text-sm text-gray-400">
-                  Start by generating notes, quizzes, or flashcards above.
-                </p>
-                <Link href="/generate">
-                  <Button variant="primary" size="sm">
-                    Generate Your First Content
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {contentHistory.map((item) => {
-                  const config = CONTENT_TYPES[item.type as keyof typeof CONTENT_TYPES];
-                  
-                  return (
-                    <Link key={item.id} href={`/dashboard/content/${item.id}`}>
-                      <div className="glass-card group flex flex-col p-5 hover:scale-[1.02] hover:border-white/20 transition-all duration-300">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${config?.color || 'from-gray-600 to-gray-800'} text-xl shadow-md`}>
-                            {config?.icon || '📄'}
-                          </span>
-                          <span className="text-xs text-gray-500 bg-gray-800/50 px-2 py-1 rounded-full border border-gray-700">
-                            {new Date(item.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <h3 className="font-medium text-white line-clamp-2 mb-2 min-h-[40px]">
-                          {item.topic}
-                        </h3>
-                        <p className="text-sm font-medium text-gray-400 capitalize">
-                          {item.type}
-                        </p>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          {/* ===== Content History (Searchable & Filterable) ===== */}
+          <DashboardContent initialHistory={contentHistory.map(item => ({
+            ...item,
+            content: item.content as Record<string, unknown>,
+          }))} />
         </div>
       </main>
     </>
   );
 }
+
