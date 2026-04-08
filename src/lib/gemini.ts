@@ -7,7 +7,7 @@ if (!process.env.GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // --- Model fallback chain (if primary is overloaded, try the next) ---
-const MODEL_CHAIN = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+const MODEL_CHAIN = ["gemini-3-flash", "gemini-2.5-flash"];
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1500;
 
