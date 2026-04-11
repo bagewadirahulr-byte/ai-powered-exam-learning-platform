@@ -77,6 +77,7 @@ export const subscriptions = pgTable("subscriptions", {
   razorpayPaymentId: text("razorpay_payment_id"),
   plan: subscriptionStatusEnum("plan").notNull().default("free"),
   currentPeriodEnd: timestamp("current_period_end"),
+  cancelledAt: timestamp("cancelled_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

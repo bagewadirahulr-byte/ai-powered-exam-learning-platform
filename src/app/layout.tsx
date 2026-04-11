@@ -10,6 +10,8 @@ import { dark } from "@clerk/themes";
 import "./globals.css";
 import { APP_NAME, APP_DESCRIPTION, APP_URL } from "@/config/constants";
 import SplashScreen from "@/components/ui/SplashScreen";
+import CookieConsent from "@/components/ui/CookieConsent";
+import AnalyticsProvider from "@/components/ui/AnalyticsProvider";
 
 // --- Google Font: Inter ---
 const inter = Inter({
@@ -35,6 +37,17 @@ export const metadata: Metadata = {
     "learning platform",
     "Gemini AI",
   ],
+  openGraph: {
+    type: "website",
+    title: `${APP_NAME} — AI-Powered Exam Learning Platform`,
+    description: APP_DESCRIPTION,
+    siteName: APP_NAME,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${APP_NAME} — AI-Powered Exam Learning Platform`,
+    description: APP_DESCRIPTION,
+  },
 };
 
 // --- Root Layout ---
@@ -75,6 +88,8 @@ export default function RootLayout({
           }}
         >
           <SplashScreen />
+          <AnalyticsProvider />
+          <CookieConsent />
           {children}
         </ClerkProvider>
       </body>

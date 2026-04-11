@@ -102,6 +102,14 @@ export default async function DashboardPage() {
                    dbUser?.subscriptionStatus === 'half_yearly' ? '⭐ Half-Yearly' :
                    dbUser?.subscriptionStatus === 'annual' ? '💎 Annual' : '🆓 Free'}
                 </p>
+                <div className="mt-2">
+                  <Link
+                    href="/dashboard/subscription"
+                    className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition-colors font-medium"
+                  >
+                    Manage Subscription →
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

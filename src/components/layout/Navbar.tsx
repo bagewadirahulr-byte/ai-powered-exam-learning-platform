@@ -46,6 +46,12 @@ export default function Navbar() {
           >
             Pricing
           </Link>
+          <Link
+            href="/contact"
+            className="text-sm text-gray-400 transition-colors hover:text-white"
+          >
+            Contact
+          </Link>
         </div>
 
         {/* Auth Buttons — powered by Clerk */}

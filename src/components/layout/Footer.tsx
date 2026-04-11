@@ -49,17 +49,34 @@ export default function Footer() {
             </ul>
           </div>
 
+          {/* Support */}
+          <div>
+            <h4 className="mb-3 text-sm font-semibold text-white">Support</h4>
+            <ul className="space-y-2">
+              <li>
+                <Link href="/contact" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link href="/bug-report" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Report a Bug
+                </Link>
+              </li>
+            </ul>
+          </div>
+
           {/* Legal */}
           <div>
             <h4 className="mb-3 text-sm font-semibold text-white">Legal</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-sm text-gray-400 hover:text-white transition-colors">
+                <Link href="/privacy" className="text-sm text-gray-400 hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-gray-400 hover:text-white transition-colors">
+                <Link href="/terms" className="text-sm text-gray-400 hover:text-white transition-colors">
                   Terms of Service
                 </Link>
               </li>

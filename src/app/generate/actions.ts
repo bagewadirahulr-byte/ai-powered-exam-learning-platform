@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getUserByClerkId, getUserCredits, saveGeneratedContent, deductCredits } from "@/lib/db/queries";
 import { revalidatePath } from "next/cache";
 import { generateContentJSON } from "@/lib/gemini";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * Server Action to trigger AI study material generation synchronously.
@@ -16,6 +17,15 @@ export async function generateContent(formData: FormData) {
   const level = formData.get("level") as string;
 
   if (!topic || !type) throw new Error("Missing required fields");
+
+  // 1a. Rate Limiting — max 10 generations per minute per user
+  const { success: withinLimit } = rateLimit(`generate:${clerkId}`, 10, 60000);
+  if (!withinLimit) {
+    return {
+      success: false,
+      message: "You're generating content too quickly. Please wait a minute and try again.",
+    };
+  }
 
   // 1. Get User from DB
   const user = await getUserByClerkId(clerkId);
