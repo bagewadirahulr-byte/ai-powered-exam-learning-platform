@@ -52,7 +52,7 @@ export default function SplashScreen() {
         {/* Animated App Logo */}
         <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-3xl bg-gray-900 shadow-[0_0_40px_rgba(59,130,246,0.5)] animate-bounce overflow-hidden border border-white/10">
           <img 
-            src="/team/logo.jpg" 
+            src="/team/logo.png" 
             alt="App Logo" 
             className="h-full w-full object-cover"
             onError={(e) => {

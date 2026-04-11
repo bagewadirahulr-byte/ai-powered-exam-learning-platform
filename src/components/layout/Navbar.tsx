@@ -21,7 +21,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 shadow-lg shadow-blue-500/30 overflow-hidden border border-white/10">
-            <img src="/team/logo.jpg" alt="APP_NAME" className="h-full w-full object-cover" onError={(e) => { if (e.currentTarget.src.includes('.jpg')) e.currentTarget.src = '/team/logo.png'; }} />
+            <img src="/team/logo.png" alt="APP_NAME" className="h-full w-full object-cover" onError={(e) => { if (e.currentTarget.src.includes('.png')) e.currentTarget.src = '/team/logo.jpg'; }} />
           </div>
           <span className="text-xl font-bold text-white">{APP_NAME}</span>
         </Link>
