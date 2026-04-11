@@ -1,3 +1,8 @@
+// ============================================
+// Gemini AI Client — Content Generation Engine
+// Retry logic with exponential backoff + model fallback chain
+// ============================================
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 if (!process.env.GEMINI_API_KEY) {
