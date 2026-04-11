@@ -14,16 +14,16 @@ export default function SplashScreen() {
     if (!hasShownSplash) {
       setIsVisible(true);
       
-      // Extended to 10 seconds before fading out to give time to view all pictures
+      // Extended to 12 seconds before fading out to give time to view all pictures
       const fadeTimer = setTimeout(() => {
         setIsFading(true);
-      }, 10000);
+      }, 12000);
 
-      // Completely remove from DOM after 10.5 seconds
+      // Completely remove from DOM after 12.5 seconds
       const removeTimer = setTimeout(() => {
         setIsVisible(false);
         sessionStorage.setItem("hasShownSplash", "true");
-      }, 10500);
+      }, 12500);
 
       return () => {
         clearTimeout(fadeTimer);
