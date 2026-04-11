@@ -3,6 +3,8 @@
 // Simple footer with copyright and links
 // ============================================
 
+"use client";
+
 import Link from "next/link";
 import { APP_NAME } from "@/config/constants";
 
