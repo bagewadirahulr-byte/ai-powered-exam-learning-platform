@@ -20,8 +20,8 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-blue-500/30">
-            E
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 shadow-lg shadow-blue-500/30 overflow-hidden border border-white/10">
+            <img src="/team/logo.jpg" alt="APP_NAME" className="h-full w-full object-cover" onError={(e) => { if (e.currentTarget.src.includes('.jpg')) e.currentTarget.src = '/team/logo.png'; }} />
           </div>
           <span className="text-xl font-bold text-white">{APP_NAME}</span>
         </Link>

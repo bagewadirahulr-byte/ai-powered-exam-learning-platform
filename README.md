@@ -62,74 +62,46 @@ Traditional exam preparation involves manually creating study materials, which i
 ```
 ai-powered-exam-learning-platform/
 │
+├── public/
+│   ├── team/                             # Branding and Team Assets
+│   │   ├── logo.jpg                      #   Platform Logo
+│   │   ├── rahul.jpg                     #   Team member: Rahul
+│   │   ├── charan.jpg                    #   Team member: Charan
+│   │   ├── dakshath.jpg                  #   Team member: Dakshath
+│   │   └── mahesh.jpg                    #   Team member: Mahesh
+│
 ├── src/
 │   ├── app/                              # Next.js App Router (Pages & API)
 │   │   ├── (auth)/                       # Auth pages (Sign In / Sign Up)
-│   │   │   ├── sign-in/[[...sign-in]]/page.tsx
-│   │   │   ├── sign-up/[[...sign-up]]/page.tsx
-│   │   │   └── layout.tsx
 │   │   ├── api/                          # Backend API Routes
-│   │   │   ├── razorpay/
-│   │   │   │   ├── create-order/route.ts #   Create Razorpay order
-│   │   │   │   └── verify/route.ts       #   Verify payment signature
-│   │   │   └── webhook/
-│   │   │       └── razorpay/route.ts     #   Razorpay webhook handler
-│   │   ├── dashboard/                    # User Dashboard
-│   │   │   ├── content/[id]/            
-│   │   │   │   ├── page.tsx              #   Content viewer (Notes/Quiz/etc.)
-│   │   │   │   └── loading.tsx           #   Loading skeleton
-│   │   │   ├── page.tsx                  #   Main dashboard
-│   │   │   └── loading.tsx               #   Dashboard loading skeleton
-│   │   ├── generate/                     # AI Generation Page
-│   │   │   ├── page.tsx                  #   Generation form UI
-│   │   │   └── actions.ts               #   Server action (Gemini AI call)
-│   │   ├── pricing/page.tsx              # Pricing page with Razorpay checkout
-│   │   ├── layout.tsx                    # Root layout (Clerk + Google Fonts)
-│   │   ├── page.tsx                      # Landing page (Hero + Features)
-│   │   └── globals.css                   # Global styles & design tokens
+│   │   ├── dashboard/                    # User Dashboard & Content History
+│   │   ├── generate/                     # AI Generation Page & Logic
+│   │   ├── pricing/                      # Subscription plans & Checkout
+│   │   ├── layout.tsx                    # Root layout with Splash Screen
+│   │   └── page.tsx                      # Landing page
 │   │
 │   ├── components/                       # Reusable React Components
 │   │   ├── dashboard/
-│   │   │   └── DashboardContent.tsx      #   Search & filter content history
 │   │   ├── layout/
-│   │   │   ├── Navbar.tsx                #   Navigation bar with Clerk auth
-│   │   │   └── Footer.tsx                #   Site footer
 │   │   └── ui/
-│   │       ├── Button.tsx                #   Reusable button variants
-│   │       ├── Flashcard.tsx             #   3D flip flashcard component
-│   │       ├── InteractiveQuiz.tsx        #   MCQ quiz with scoring
-│   │       ├── PDFDocument.tsx           #   PDF template (react-pdf)
-│   │       ├── PDFDownload.tsx           #   PDF download button
-│   │       └── Skeleton.tsx              #   Loading skeleton element
+│   │       ├── SplashScreen.tsx          #   Animated project credits splash
+│   │       ├── Flashcard.tsx             #   3D animated components
+│   │       └── ...
 │   │
-│   ├── config/
-│   │   └── constants.ts                  # App-wide constants (plans, credits)
+│   ├── lib/                              # Core Logic (AI, DB, Payments)
+│   │   ├── db/                           #   Drizzle database schema
+│   │   ├── gemini.ts                     #   AI Model integration
+│   │   ├── razorpay.ts                   #   Payment logic
+│   │   └── subscription.ts              #   Access control
 │   │
-│   ├── lib/                              # Server-side Libraries
-│   │   ├── db/
-│   │   │   ├── schema.ts                #   Database schema (Drizzle ORM)
-│   │   │   └── queries.ts              #   Database query functions
-│   │   ├── db.ts                        #   Neon database connection
-│   │   ├── gemini.ts                    #   Gemini AI client (retry + fallback)
-│   │   ├── razorpay.ts                  #   Razorpay client + signature verify
-│   │   ├── subscription.ts             #   Subscription access checker
-│   │   └── utils.ts                     #   Utility functions
-│   │
-│   ├── types/
-│   │   ├── index.ts                     #   Shared TypeScript interfaces
-│   │   └── razorpay.d.ts               #   Razorpay Checkout.js type defs
-│   │
-│   └── middleware.ts                     # Clerk auth middleware
+│   └── middleware.ts                     # Clerk Auth Protection
 │
 ├── scripts/
-│   └── migrate-razorpay.ts              # Database migration script
+│   └── migrate-razorpay.ts              # DB Setup Script
 │
-├── .env.example                          # Environment variable template
-├── drizzle.config.ts                     # Drizzle ORM configuration
-├── next.config.ts                        # Next.js configuration
-├── package.json                          # Dependencies & scripts
-├── tsconfig.json                         # TypeScript configuration
-└── README.md                             # This file
+├── .env.example                          # Secret keys template
+├── package.json                          # Main config
+└── README.md                             # Documentation
 ```
 
 ---
@@ -239,12 +211,15 @@ See [`.env.example`](.env.example) for all required variables:
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Development Team
 
-**Rahul R Bagewadi**
+**Data Science Students — CMR University**
 
-Built with ❤️ as a Capstone Project — 2026
+- **RAHUL R BAGEWADI** (Lead Developer)
+- **CHARAN R**
+- **DAKSHATH G N**
+- **MAHESH BILAGI**
 
 ---
 
-*Powered by Next.js, Tailwind CSS, Google Gemini AI, Neon PostgreSQL, Clerk Auth & Razorpay*
+*Built with ❤️ as a Graduation Capstone Project — 2026*

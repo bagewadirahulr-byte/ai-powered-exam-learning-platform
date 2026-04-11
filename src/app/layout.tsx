@@ -9,6 +9,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import "./globals.css";
 import { APP_NAME, APP_DESCRIPTION, APP_URL } from "@/config/constants";
+import SplashScreen from "@/components/ui/SplashScreen";
 
 // --- Google Font: Inter ---
 const inter = Inter({
@@ -73,6 +74,7 @@ export default function RootLayout({
             },
           }}
         >
+          <SplashScreen />
           {children}
         </ClerkProvider>
       </body>

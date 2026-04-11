@@ -14,8 +14,8 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white">
-                E
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 overflow-hidden border border-white/10">
+                <img src="/team/logo.jpg" alt="APP_NAME" className="h-full w-full object-cover" onError={(e) => { if (e.currentTarget.src.includes('.jpg')) e.currentTarget.src = '/team/logo.png'; }} />
               </div>
               <span className="text-lg font-bold text-white">{APP_NAME}</span>
             </div>
