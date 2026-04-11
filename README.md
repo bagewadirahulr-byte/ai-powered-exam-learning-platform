@@ -43,17 +43,32 @@ Traditional exam preparation involves manually creating study materials, which i
 
 ## ✨ Key Features
 
+### Core Platform
 - **🧠 AI Content Generation** — Generate notes, quizzes, flashcards, Q&A from any topic
 - **🎯 Difficulty Levels** — Beginner, Intermediate, and Advanced
 - **📝 Interactive Quizzes** — Click to answer, instant correct/wrong feedback with explanations
 - **🃏 3D Flashcards** — Animated flip cards with front/back
 - **📄 PDF Export** — Download any generated content as a formatted PDF
 - **🔍 Search & Filter** — Search across all study materials by topic/type
+
+### Auth & Security
 - **🔐 Authentication** — Secure sign-in/up via Clerk (Google, Email)
-- **💳 Credit System** — Free tier (5 credits) + paid subscription plans via Razorpay
+- **🛡️ Rate Limiting** — In-memory sliding window limiter (10 req/min per user)
+- **🍪 Cookie Consent** — GDPR-compliant banner with Accept/Decline
+
+### Payments & Subscriptions
+- **💳 Credit System** — Free tier (5 credits) + paid plans via Razorpay
+- **📊 Subscription Management** — View plan details, credits, upgrade, cancel
+- **🔗 Webhook Fallback** — Dual payment verification (client + server webhook)
+
+### Polish & Production
 - **📱 Responsive** — Works seamlessly on mobile, tablet, and desktop
 - **🛡️ AI Resilience** — Auto-retry with exponential backoff + model fallback chain
 - **⚡ Loading Skeletons** — Polished loading states for all pages
+- **🗺️ SEO Optimized** — Sitemap, robots.txt, OpenGraph & Twitter metadata
+- **📧 Support System** — Contact page & structured bug report form
+- **📜 Legal Pages** — Privacy Policy & Terms of Service
+- **📈 Analytics Ready** — Pluggable event tracking (Google Analytics / Vercel / PostHog)
 
 ---
 
@@ -63,45 +78,113 @@ Traditional exam preparation involves manually creating study materials, which i
 ai-powered-exam-learning-platform/
 │
 ├── public/
-│   ├── team/                             # Branding and Team Assets
-│   │   ├── logo.jpg                      #   Platform Logo
-│   │   ├── rahul.jpg                     #   Team member: Rahul
-│   │   ├── charan.jpg                    #   Team member: Charan
-│   │   ├── dakshath.jpg                  #   Team member: Dakshath
-│   │   └── mahesh.jpg                    #   Team member: Mahesh
+│   └── team/                                # Branding & Team Assets
+│       ├── logo.jpg                         #   Platform logo
+│       ├── rahul.jpg                        #   Team member: Rahul
+│       ├── charan.jpg                       #   Team member: Charan
+│       ├── dakshath.jpg                     #   Team member: Dakshath
+│       └── mahesh.jpg                       #   Team member: Mahesh
 │
 ├── src/
-│   ├── app/                              # Next.js App Router (Pages & API)
-│   │   ├── (auth)/                       # Auth pages (Sign In / Sign Up)
-│   │   ├── api/                          # Backend API Routes
-│   │   ├── dashboard/                    # User Dashboard & Content History
-│   │   ├── generate/                     # AI Generation Page & Logic
-│   │   ├── pricing/                      # Subscription plans & Checkout
-│   │   ├── layout.tsx                    # Root layout with Splash Screen
-│   │   └── page.tsx                      # Landing page
+│   ├── app/                                 # ─── Next.js App Router ───
+│   │   │
+│   │   ├── (auth)/                          # Auth Pages
+│   │   │   ├── layout.tsx                   #   Centered auth layout with gradient orbs
+│   │   │   ├── sign-in/[[...sign-in]]/      #   Clerk Sign-In page
+│   │   │   └── sign-up/[[...sign-up]]/      #   Clerk Sign-Up page
+│   │   │
+│   │   ├── api/                             # Backend API Routes
+│   │   │   ├── razorpay/
+│   │   │   │   ├── create-order/route.ts    #   POST — Create Razorpay order
+│   │   │   │   └── verify/route.ts          #   POST — Verify payment signature
+│   │   │   └── webhook/
+│   │   │       └── razorpay/route.ts        #   POST — Razorpay webhook (fallback)
+│   │   │
+│   │   ├── dashboard/                       # Dashboard (Protected)
+│   │   │   ├── page.tsx                     #   Main dashboard with profile & history
+│   │   │   ├── loading.tsx                  #   Skeleton loader
+│   │   │   ├── content/[id]/page.tsx        #   Dynamic content viewer
+│   │   │   └── subscription/               #   Subscription Management
+│   │   │       ├── page.tsx                 #     Plan details, credits, expiry
+│   │   │       ├── actions.ts              #     Server action: cancelSubscription()
+│   │   │       └── CancelButton.tsx         #     Client component with confirm dialog
+│   │   │
+│   │   ├── generate/                        # AI Generation (Protected)
+│   │   │   ├── page.tsx                     #   Topic input form
+│   │   │   └── actions.ts                  #   Server action: generateContent()
+│   │   │
+│   │   ├── pricing/                         # Pricing Page (Public)
+│   │   │   └── page.tsx                     #   Plans comparison + Razorpay checkout
+│   │   │
+│   │   ├── contact/                         # Contact / Support (Public)
+│   │   │   └── page.tsx                     #   Email form + copy email button
+│   │   │
+│   │   ├── bug-report/                      # Bug Report (Public)
+│   │   │   └── page.tsx                     #   Structured bug form with severity
+│   │   │
+│   │   ├── privacy/                         # Privacy Policy (Public)
+│   │   │   └── page.tsx                     #   7-section legal page
+│   │   │
+│   │   ├── terms/                           # Terms of Service (Public)
+│   │   │   └── page.tsx                     #   9-section legal page
+│   │   │
+│   │   ├── sitemap.ts                       # SEO: Auto-generated /sitemap.xml
+│   │   ├── robots.ts                        # SEO: Auto-generated /robots.txt
+│   │   ├── layout.tsx                       # Root layout (Clerk, Splash, Analytics, Cookies)
+│   │   ├── page.tsx                         # Landing page
+│   │   ├── globals.css                      # Global styles & Tailwind config
+│   │   └── favicon.ico                      # App icon
 │   │
-│   ├── components/                       # Reusable React Components
+│   ├── components/                          # ─── Reusable Components ───
 │   │   ├── dashboard/
+│   │   │   └── DashboardContent.tsx         #   Content grid with search & filters
+│   │   │
 │   │   ├── layout/
+│   │   │   ├── Navbar.tsx                   #   Top nav (Features, Pricing, Contact)
+│   │   │   └── Footer.tsx                   #   Footer (Product, Support, Legal links)
+│   │   │
 │   │   └── ui/
-│   │       ├── SplashScreen.tsx          #   Animated project credits splash
-│   │       ├── Flashcard.tsx             #   3D animated components
-│   │       └── ...
+│   │       ├── AnalyticsProvider.tsx         #   Page view tracker (usePathname)
+│   │       ├── Button.tsx                   #   Reusable button (primary/secondary/ghost)
+│   │       ├── CookieConsent.tsx            #   GDPR cookie consent banner
+│   │       ├── Flashcard.tsx                #   3D animated flip card
+│   │       ├── InteractiveQuiz.tsx          #   Quiz interface with scoring
+│   │       ├── PDFDocument.tsx              #   PDF layout template
+│   │       ├── PDFDownload.tsx              #   Download PDF button
+│   │       ├── Skeleton.tsx                 #   Loading skeleton component
+│   │       └── SplashScreen.tsx             #   Animated project credits splash
 │   │
-│   ├── lib/                              # Core Logic (AI, DB, Payments)
-│   │   ├── db/                           #   Drizzle database schema
-│   │   ├── gemini.ts                     #   AI Model integration
-│   │   ├── razorpay.ts                   #   Payment logic
-│   │   └── subscription.ts              #   Access control
+│   ├── lib/                                 # ─── Core Logic ───
+│   │   ├── db/
+│   │   │   ├── schema.ts                   #   Drizzle schema (users, content, credits, subs)
+│   │   │   └── queries.ts                  #   Database query functions
+│   │   ├── db.ts                            #   Neon connection setup
+│   │   ├── gemini.ts                        #   Gemini AI integration + retry + fallback
+│   │   ├── razorpay.ts                      #   Razorpay SDK + signature verification
+│   │   ├── subscription.ts                  #   Subscription access control check
+│   │   ├── rate-limit.ts                    #   Sliding window rate limiter
+│   │   ├── analytics.ts                     #   Event tracking utility (pluggable)
+│   │   └── utils.ts                         #   Shared utility functions
 │   │
-│   └── middleware.ts                     # Clerk Auth Protection
+│   ├── config/
+│   │   └── constants.ts                     #   App constants, plans, content types
+│   │
+│   ├── types/
+│   │   ├── index.ts                         #   Shared TypeScript interfaces
+│   │   └── razorpay.d.ts                    #   Razorpay Checkout.js type declarations
+│   │
+│   └── middleware.ts                        #   Clerk auth protection + public routes
 │
 ├── scripts/
-│   └── migrate-razorpay.ts              # DB Setup Script
+│   └── migrate-razorpay.ts                  # DB migration script
 │
-├── .env.example                          # Secret keys template
-├── package.json                          # Main config
-└── README.md                             # Documentation
+├── .env.example                             # Environment variables template
+├── drizzle.config.ts                        # Drizzle ORM configuration
+├── next.config.ts                           # Next.js configuration
+├── tsconfig.json                            # TypeScript configuration
+├── package.json                             # Dependencies & scripts
+├── LICENSE                                  # MIT License
+└── README.md                                # This file
 ```
 
 ---
@@ -171,6 +254,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
                      │ razorpay_payment_id│
                      │ plan (enum)        │
                      │ period_end         │
+                     │ cancelled_at       │
                      └────────────────────┘
 ```
 
@@ -184,6 +268,19 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 | 📦 Monthly | ₹199 | 50/month | 1 month |
 | ⭐ Half-Yearly | ₹499 | 50/month | 6 months |
 | 💎 Annual | ₹999 | Unlimited | 12 months |
+
+---
+
+## 🔒 Security Architecture
+
+| Layer | Mechanism | Details |
+|---|---|---|
+| **Authentication** | Clerk | OAuth, email/password — no credentials stored locally |
+| **Database** | Drizzle ORM | Parameterized queries prevent SQL injection |
+| **Payments** | Razorpay + HMAC SHA256 | Server-side signature verification |
+| **API Protection** | Rate Limiting | Sliding window: 10 requests/min per user |
+| **Content Access** | Row-Level Security | Users can only view their own generated content |
+| **Cookies** | GDPR Consent | Cookie consent banner with localStorage preference |
 
 ---
 
@@ -202,12 +299,21 @@ See [`.env.example`](.env.example) for all required variables:
 
 ## 🗺️ Roadmap
 
+- [x] 🧠 AI-powered content generation (Notes, Quiz, Flashcards, Q&A)
+- [x] 🔐 Authentication with Clerk (Google OAuth + Email)
+- [x] 💳 Payment integration with Razorpay
+- [x] 📄 PDF export for all content types
+- [x] 📊 Subscription management (view, upgrade, cancel)
+- [x] 🛡️ Rate limiting & security hardening
+- [x] 🗺️ SEO (sitemap, robots.txt, OpenGraph)
+- [x] 📜 Legal compliance (Privacy Policy, Terms, Cookie Consent)
+- [x] 📧 Support system (Contact & Bug Report pages)
+- [x] 📈 Analytics infrastructure (pluggable provider)
 - [ ] 📱 Mobile app (React Native)
 - [ ] 🗣️ Voice-based learning
 - [ ] ✍️ Handwriting recognition for input
 - [ ] 📅 Smart revision schedules
 - [ ] 🌐 Multi-language support
-- [ ] 📊 Performance analytics dashboard
 
 ---
 
@@ -223,3 +329,4 @@ See [`.env.example`](.env.example) for all required variables:
 ---
 
 *Built with ❤️ as a Graduation Capstone Project — 2026*
+
