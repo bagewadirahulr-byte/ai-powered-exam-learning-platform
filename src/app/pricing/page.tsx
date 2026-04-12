@@ -137,7 +137,7 @@ export default function PricingPage() {
             Plans that fit your <span className="gradient-text">learning goals</span>
           </h1>
           <p className="text-xl text-gray-400">
-            Start free with 5 credits. Upgrade anytime with UPI, cards, or net banking.
+            Start free with 8 daily credits. Upgrade anytime with UPI, cards, or net banking.
           </p>
         </div>
 

@@ -456,7 +456,7 @@ export default function LandingPage() {
               Simple, <span className="gradient-text">Affordable</span> Plans
             </h2>
             <p className="mx-auto max-w-xl text-gray-400">
-              Start free with 5 credits. Upgrade anytime for unlimited AI power.
+              Start free with 8 daily credits. Upgrade anytime for unlimited AI power.
             </p>
           </div>
 

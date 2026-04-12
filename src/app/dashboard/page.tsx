@@ -7,7 +7,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { CONTENT_TYPES, FREE_CREDITS } from "@/config/constants";
-import { getUserByClerkId, getUserCredits, getUserContent, createUser } from "@/lib/db/queries";
+import { getUserByClerkId, getUserCredits, getUserContent, createUser, checkAndResetDailyCredits } from "@/lib/db/queries";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import DashboardMoodWidget from "./DashboardMoodWidget";
 import BetaFeatureCards from "@/components/dashboard/BetaFeatureCards";
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
     }
 
     if (dbUser) {
-      credits = await getUserCredits(dbUser.id);
+      credits = await checkAndResetDailyCredits(dbUser.id);
       contentHistory = await getUserContent(dbUser.id);
     }
   }
@@ -48,7 +48,7 @@ export default async function DashboardPage() {
       <main className="min-h-screen px-6 pt-24 pb-12">
         <div className="mx-auto max-w-6xl">
           {/* ===== Welcome Section ===== */}
-          <div className="mb-10">
+          <div className="mb-10 animate-fade-in-up">
             <h1 className="mb-2 text-3xl font-bold text-white">
               Welcome back,{" "}
               <span className="gradient-text">
@@ -62,7 +62,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* ===== User Info Card ===== */}
-          <div className="glass-card mb-10 p-6">
+          <div className="glass-card mb-10 p-6 animate-fade-in-up delay-100">
             <h2 className="mb-4 text-lg font-semibold text-white">
               Your Profile
             </h2>
@@ -102,7 +102,8 @@ export default async function DashboardPage() {
                 <p className="mt-1 inline-block rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400">
                   {dbUser?.subscriptionStatus === 'monthly' ? '📦 Monthly' :
                    dbUser?.subscriptionStatus === 'half_yearly' ? '⭐ Half-Yearly' :
-                   dbUser?.subscriptionStatus === 'annual' ? '💎 Annual' : '🆓 Free'}
+                   dbUser?.subscriptionStatus === 'annual' ? '💎 Annual' : 
+                   dbUser?.ewsVerified ? '🎓 EWS Free Platform' : '🆓 Free'}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   <Link
@@ -123,7 +124,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* ===== Quick Actions — Generate Content ===== */}
-          <div className="mb-6">
+          <div className="mb-6 animate-fade-in-up delay-200">
             <h2 className="mb-4 text-lg font-semibold text-white flex justify-between items-end">
               <div>Generate Content</div>
               <Link href="/dashboard/history" className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
@@ -152,7 +153,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* ===== Progress, Consistency & Wellness (Phase 4/6) ===== */}
-          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 mb-10">
+          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 mb-10 animate-fade-in-up delay-300">
             {/* Syllabus Tracker */}
             <div className="glass-card p-6 md:col-span-1 border-t-4 border-t-indigo-500 flex flex-col">
               <h3 className="font-bold text-white mb-2 text-lg">Syllabus Tracker</h3>
@@ -253,16 +254,18 @@ export default async function DashboardPage() {
             </Link>
           </div>
           {/* ===== Beta Features row ===== */}
-          <div className="mb-10">
+          <div className="mb-10 animate-fade-in-up delay-300">
             <h2 className="mb-4 text-lg font-semibold text-white">Upcoming Features <span className="ml-2 font-mono text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30 uppercase">Beta / Coming Soon</span></h2>
             <BetaFeatureCards />
           </div>
 
           {/* ===== Content History (Searchable & Filterable) ===== */}
-          <DashboardContent initialHistory={contentHistory.map(item => ({
-            ...item,
-            content: item.content as Record<string, unknown>,
-          }))} />
+          <div className="animate-fade-in-up delay-300">
+            <DashboardContent initialHistory={contentHistory.map(item => ({
+              ...item,
+              content: item.content as Record<string, unknown>,
+            }))} />
+          </div>
         </div>
       </main>
     </>
