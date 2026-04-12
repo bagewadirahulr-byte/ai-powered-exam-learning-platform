@@ -2,17 +2,19 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
 
-// Register fonts to support Indian Vernacular Languages (Devanagari / Hindi / Marathi etc)
-Font.register({
-  family: 'NotoSansDevanagari',
-  src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf'
-});
-
 // Generic English Font
 Font.register({
   family: 'Roboto',
   src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf'
 });
+
+// Register fonts for Indian Vernacular Languages
+Font.register({ family: 'NotoSansDevanagari', src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf' });
+Font.register({ family: 'NotoSansArabic', src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf' });
+Font.register({ family: 'NotoSansKannada', src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansKannada/NotoSansKannada-Regular.ttf' });
+Font.register({ family: 'NotoSansTamil', src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansTamil/NotoSansTamil-Regular.ttf' });
+Font.register({ family: 'NotoSansTelugu', src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansTelugu/NotoSansTelugu-Regular.ttf' });
+Font.register({ family: 'NotoSansMalayalam', src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansMalayalam/NotoSansMalayalam-Regular.ttf' });
 
 const styles = StyleSheet.create({
   page: {
@@ -20,11 +22,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     fontFamily: "Roboto",
   },
-  pageDevanagari: {
-    padding: 50,
-    backgroundColor: "#ffffff",
-    fontFamily: "NotoSansDevanagari",
-  },
+  pageDevanagari: { padding: 50, backgroundColor: "#ffffff", fontFamily: "NotoSansDevanagari" },
+  pageArabic: { padding: 50, backgroundColor: "#ffffff", fontFamily: "NotoSansArabic" },
+  pageKannada: { padding: 50, backgroundColor: "#ffffff", fontFamily: "NotoSansKannada" },
+  pageTamil: { padding: 50, backgroundColor: "#ffffff", fontFamily: "NotoSansTamil" },
+  pageTelugu: { padding: 50, backgroundColor: "#ffffff", fontFamily: "NotoSansTelugu" },
+  pageMalayalam: { padding: 50, backgroundColor: "#ffffff", fontFamily: "NotoSansMalayalam" },
   header: {
     marginBottom: 30,
     borderBottomWidth: 1,
@@ -153,10 +156,16 @@ interface PDFDocumentProps {
 }
 
 const PDFDocument: React.FC<PDFDocumentProps> = ({ title, type, data }) => {
-  // Detect if content contains Devanagari (Hindi) and swap the page style to the supported font
+  // Detect language and swap the page style to the supported font
   const contentString = JSON.stringify(data) + title;
-  const isDevanagari = /[\u0900-\u097F]/.test(contentString);
-  const pageStyle = isDevanagari ? styles.pageDevanagari : styles.page;
+  
+  let pageStyle = styles.page;
+  if (/[\u0900-\u097F]/.test(contentString)) pageStyle = styles.pageDevanagari; // Hindi
+  else if (/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(contentString)) pageStyle = styles.pageArabic; // Urdu
+  else if (/[\u0C80-\u0CFF]/.test(contentString)) pageStyle = styles.pageKannada; // Kannada
+  else if (/[\u0B80-\u0BFF]/.test(contentString)) pageStyle = styles.pageTamil; // Tamil
+  else if (/[\u0C00-\u0C7F]/.test(contentString)) pageStyle = styles.pageTelugu; // Telugu
+  else if (/[\u0D00-\u0D7F]/.test(contentString)) pageStyle = styles.pageMalayalam; // Malayalam
 
   return (
   <Document>
