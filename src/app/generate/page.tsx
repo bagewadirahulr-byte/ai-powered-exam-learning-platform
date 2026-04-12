@@ -11,6 +11,7 @@ export default function GeneratePage() {
   const [topic, setTopic] = useState("");
   const [type, setType] = useState<ContentType>("notes");
   const [level, setLevel] = useState("Intermediate");
+  const [topicMode, setTopicMode] = useState<"exam" | "general">("exam");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -103,6 +104,48 @@ export default function GeneratePage() {
             />
           </div>
 
+          {/* Topic Mode Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Topic Category
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setTopicMode("exam")}
+                className={`rounded-xl border p-4 text-left transition-all ${
+                  topicMode === "exam"
+                    ? "border-green-500 bg-green-500/10 shadow-md shadow-green-500/10"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+                disabled={loading}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-white">🎯 Exam Topic</span>
+                  <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-bold text-green-400 border border-green-500/30">1 Credit</span>
+                </div>
+                <p className="text-xs text-gray-500">UPSC, SSC, IBPS, RRB syllabus topics</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTopicMode("general")}
+                className={`rounded-xl border p-4 text-left transition-all ${
+                  topicMode === "general"
+                    ? "border-yellow-500 bg-yellow-500/10 shadow-md shadow-yellow-500/10"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+                disabled={loading}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-white">🌐 General Topic</span>
+                  <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs font-bold text-yellow-400 border border-yellow-500/30">2 Credits</span>
+                </div>
+                <p className="text-xs text-gray-500">Any topic outside exam syllabus</p>
+              </button>
+            </div>
+            <input type="hidden" name="topicMode" value={topicMode} />
+          </div>
+
           {/* Type Selector */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -165,7 +208,7 @@ export default function GeneratePage() {
                 Generating...
               </>
             ) : (
-              'Generate Content (1 Credit)'
+              `Generate Content (${topicMode === 'exam' ? '1 Credit' : '2 Credits'})`
             )}
           </button>
         </form>

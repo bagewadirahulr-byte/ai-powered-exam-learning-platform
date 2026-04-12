@@ -11,6 +11,8 @@ import { getUserByClerkId, getUserCredits, getUserContent, createUser } from "@/
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import DashboardMoodWidget from "./DashboardMoodWidget";
 import BetaFeatureCards from "@/components/dashboard/BetaFeatureCards";
+import OnboardingWizard from "@/components/dashboard/OnboardingWizard";
+import { updateProfile } from "./settings/actions";
 
 export default async function DashboardPage() {
 
@@ -44,6 +46,11 @@ export default async function DashboardPage() {
 
   // Pre-compute time threshold for heatmap (uses new Date() which is stable in server components)
   const thirtyDaysAgo = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  // --- First-Time User Detection: Show Onboarding Wizard ---
+  if (dbUser && !dbUser.firstName) {
+    return <OnboardingWizard saveProfile={updateProfile} />;
+  }
 
   return (
     <>
