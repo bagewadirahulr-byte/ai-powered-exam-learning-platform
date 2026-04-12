@@ -1,11 +1,17 @@
 // ============================================
 // App-wide Constants
 // AI-Powered Exam Learning Platform
+// ExamAI — Social Impact Extension
 // ============================================
 
 // --- Credit System ---
 export const FREE_CREDITS = 5; // Credits given to new users on signup
 export const CREDITS_PER_GENERATION = 1; // Credits deducted per AI generation
+
+// --- Daily Credit Limits (Social Impact) ---
+export const DAILY_CREDITS_GENERAL = 8;
+export const DAILY_CREDITS_EWS = 50;
+export const DAILY_CREDITS_CHATBOT_COST = 1; // Credits deducted per tutor chatbot message
 
 // --- Content Types Config ---
 export const CONTENT_TYPES = {
@@ -34,6 +40,54 @@ export const CONTENT_TYPES = {
     color: "from-green-500 to-emerald-500",
   },
 } as const;
+
+// --- Supported Languages (Vernacular Engine) ---
+export const SUPPORTED_LANGUAGES = {
+  english: { label: "English", bcp47: "en-IN" },
+  hindi: { label: "हिन्दी (Hindi)", bcp47: "hi-IN" },
+  urdu: { label: "اردو (Urdu)", bcp47: "ur-IN" },
+  kannada: { label: "ಕನ್ನಡ (Kannada)", bcp47: "kn-IN" },
+  tamil: { label: "தமிழ் (Tamil)", bcp47: "ta-IN" },
+  telugu: { label: "తెలుగు (Telugu)", bcp47: "te-IN" },
+  malayalam: { label: "മലയാളം (Malayalam)", bcp47: "ml-IN" },
+} as const;
+
+export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
+
+// --- Supported Exams (Government Exam Focus) ---
+export const SUPPORTED_EXAMS = {
+  UPSC: {
+    label: "UPSC Civil Services",
+    negativeMarkingPenalty: -0.33,
+    totalTimeMinutes: 120,
+  },
+  SSC_CGL: {
+    label: "SSC CGL",
+    negativeMarkingPenalty: -0.50,
+    totalTimeMinutes: 60,
+  },
+  IBPS: {
+    label: "IBPS (Banking)",
+    negativeMarkingPenalty: -0.25,
+    totalTimeMinutes: 60,
+  },
+  RRB_NTPC: {
+    label: "RRB NTPC (Railways)",
+    negativeMarkingPenalty: -0.33,
+    totalTimeMinutes: 90,
+  },
+} as const;
+
+export type SupportedExam = keyof typeof SUPPORTED_EXAMS;
+
+// --- Mood Emojis (Wellness Tracker) ---
+export const MOOD_EMOJIS = [
+  { score: 1, emoji: "😫", label: "Very Stressed" },
+  { score: 2, emoji: "😟", label: "Stressed" },
+  { score: 3, emoji: "😐", label: "Neutral" },
+  { score: 4, emoji: "🙂", label: "Good" },
+  { score: 5, emoji: "😊", label: "Great" },
+] as const;
 
 // --- Subscription Plans ---
 export const PLANS = {

@@ -1,15 +1,28 @@
 // ============================================
-// Database Queries
+// Database Queries — Data Access Layer (DAL)
 // Neon PostgreSQL with Drizzle ORM
+// ExamAI — Social Impact Extension
 // ============================================
 
 import { db } from "../db";
-import { users, generatedContent, credits, contentTypeEnum } from "./schema";
-import { eq, desc } from "drizzle-orm";
+import {
+  users,
+  generatedContent,
+  credits,
+  contentTypeEnum,
+  wellnessLogs,
+  contentCache,
+  errorReports,
+} from "./schema";
+import { eq, desc, or, and, sql, count } from "drizzle-orm";
 import { FREE_CREDITS } from "@/config/constants";
 
 // --- Types ---
-type ContentType = typeof contentTypeEnum.enumValues[number];
+type ContentType = (typeof contentTypeEnum.enumValues)[number];
+
+// ============================================
+// EXISTING QUERIES (Unchanged)
+// ============================================
 
 /**
  * Get a user by their Clerk ID.
@@ -20,7 +33,7 @@ export async function getUserByClerkId(clerkId: string) {
     .from(users)
     .where(eq(users.clerkId, clerkId))
     .limit(1);
-    
+
   return result[0] || null;
 }
 
@@ -33,25 +46,63 @@ export async function createUser(data: {
   name: string;
   imageUrl?: string;
 }) {
-  // 1. Create the user
-  const newUser = await db.insert(users).values({
-    clerkId: data.clerkId,
-    email: data.email,
-    name: data.name,
-    imageUrl: data.imageUrl,
-    subscriptionStatus: "free",
-  }).returning();
+  // Try to find if user already exists (handles email conflicts or race conditions)
+  const existingUsers = await db
+    .select()
+    .from(users)
+    .where(or(eq(users.clerkId, data.clerkId), eq(users.email, data.email)))
+    .limit(1);
 
-  const user = newUser[0];
+  if (existingUsers.length > 0) {
+    const existingUser = existingUsers[0];
 
-  // 2. Give free credits on signup
-  await db.insert(credits).values({
-    userId: user.id,
-    amount: FREE_CREDITS,
-    reason: "Signup bonus",
-  });
+    // If the clerkId changed (e.g. account recreated with same email)
+    if (existingUser.clerkId !== data.clerkId) {
+      const updatedUsers = await db
+        .update(users)
+        .set({
+          clerkId: data.clerkId,
+          imageUrl: data.imageUrl,
+          name: data.name,
+        })
+        .where(eq(users.id, existingUser.id))
+        .returning();
+      return updatedUsers[0];
+    }
 
-  return user;
+    return existingUser;
+  }
+
+  try {
+    // 1. Create the user
+    const newUser = await db
+      .insert(users)
+      .values({
+        clerkId: data.clerkId,
+        email: data.email,
+        name: data.name,
+        imageUrl: data.imageUrl,
+        subscriptionStatus: "free",
+      })
+      .returning();
+
+    const user = newUser[0];
+
+    // 2. Give free credits on signup
+    await db.insert(credits).values({
+      userId: user.id,
+      amount: FREE_CREDITS,
+      reason: "Signup bonus",
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Database race condition while creating user:", error);
+    // Fallback: fetch again in case it was created concurrently
+    const fallbackUser = await getUserByClerkId(data.clerkId);
+    if (fallbackUser) return fallbackUser;
+    throw error;
+  }
 }
 
 /**
@@ -70,7 +121,11 @@ export async function getUserCredits(userId: string) {
 /**
  * Deduct credits from a user.
  */
-export async function deductCredits(userId: string, amount: number, reason: string) {
+export async function deductCredits(
+  userId: string,
+  amount: number,
+  reason: string
+) {
   // Amount should be positive, we store it as negative
   await db.insert(credits).values({
     userId,
@@ -87,13 +142,18 @@ export async function saveGeneratedContent(data: {
   type: ContentType;
   topic: string;
   content: unknown; // JSON object
+  examType?: "UPSC" | "SSC_CGL" | "IBPS" | "RRB_NTPC" | null;
 }) {
-  const newContent = await db.insert(generatedContent).values({
-    userId: data.userId,
-    type: data.type,
-    topic: data.topic,
-    content: data.content,
-  }).returning();
+  const newContent = await db
+    .insert(generatedContent)
+    .values({
+      userId: data.userId,
+      type: data.type,
+      topic: data.topic,
+      content: data.content,
+      examType: data.examType || null,
+    })
+    .returning();
 
   return newContent[0];
 }
@@ -118,6 +178,285 @@ export async function getContentById(id: string) {
     .from(generatedContent)
     .where(eq(generatedContent.id, id))
     .limit(1);
-    
+
   return result[0] || null;
+}
+
+// ============================================
+// NEW QUERIES — Social Impact Extension
+// ============================================
+
+// --- Daily Credit System ---
+
+/**
+ * Check and reset daily credits if a new day has started.
+ * Returns the user's current daily credits after potential reset.
+ */
+export async function checkAndResetDailyCredits(userId: string) {
+  const user = await db
+    .select({
+      dailyCredits: users.dailyCredits,
+      lastCreditReset: users.lastCreditReset,
+      ewsVerified: users.ewsVerified,
+      ewsPending: users.ewsPending,
+      ewsTempPassExpiry: users.ewsTempPassExpiry,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user[0]) return 0;
+
+  const now = new Date();
+  const lastReset = new Date(user[0].lastCreditReset);
+  const isNewDay =
+    now.getUTCDate() !== lastReset.getUTCDate() ||
+    now.getUTCMonth() !== lastReset.getUTCMonth() ||
+    now.getUTCFullYear() !== lastReset.getUTCFullYear();
+
+  if (isNewDay) {
+    // Determine max credits: EWS verified = 50, General = 8
+    const isEwsActive =
+      user[0].ewsVerified ||
+      (user[0].ewsPending &&
+        user[0].ewsTempPassExpiry &&
+        new Date(user[0].ewsTempPassExpiry) > now);
+    const maxCredits = isEwsActive ? 50 : 8;
+
+    await db
+      .update(users)
+      .set({ dailyCredits: maxCredits, lastCreditReset: now })
+      .where(eq(users.id, userId));
+
+    return maxCredits;
+  }
+
+  return user[0].dailyCredits;
+}
+
+/**
+ * Deduct one daily credit from a user. Returns false if no credits remain.
+ */
+export async function deductDailyCredit(userId: string): Promise<boolean> {
+  const currentCredits = await checkAndResetDailyCredits(userId);
+  if (currentCredits <= 0) return false;
+
+  await db
+    .update(users)
+    .set({ dailyCredits: currentCredits - 1 })
+    .where(eq(users.id, userId));
+
+  return true;
+}
+
+// --- User Profile Updates ---
+
+/**
+ * Update user profile preferences (language, exam, identity fields).
+ */
+export async function updateUserProfile(
+  userId: string,
+  data: {
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
+    preferredLanguage?: "english" | "hindi" | "urdu" | "kannada" | "tamil" | "telugu" | "malayalam";
+    targetExam?: "UPSC" | "SSC_CGL" | "IBPS" | "RRB_NTPC" | null;
+  }
+) {
+  const updated = await db
+    .update(users)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+
+  return updated[0] || null;
+}
+
+/**
+ * Set EWS verification status on a user.
+ */
+export async function setEwsStatus(
+  userId: string,
+  status: {
+    ewsVerified?: boolean;
+    ewsPending?: boolean;
+    ewsTempPassExpiry?: Date | null;
+  }
+) {
+  await db
+    .update(users)
+    .set({ ...status, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
+// --- Wellness Logs ---
+
+/**
+ * Log a mood check-in for a user.
+ */
+export async function logMood(userId: string, moodScore: number) {
+  if (moodScore < 1 || moodScore > 5) throw new Error("Mood score must be 1-5");
+  return db
+    .insert(wellnessLogs)
+    .values({ userId, moodScore })
+    .returning();
+}
+
+/**
+ * Get recent mood logs for a user (last 7 days).
+ */
+export async function getRecentMoodLogs(userId: string) {
+  return db
+    .select()
+    .from(wellnessLogs)
+    .where(eq(wellnessLogs.userId, userId))
+    .orderBy(desc(wellnessLogs.createdAt))
+    .limit(30);
+}
+
+// --- Content Cache ---
+
+/**
+ * Check if cached content exists for a given topic key.
+ * Returns null if cache miss or entry is stale (>24 hours).
+ */
+export async function getCachedContent(cacheKey: string) {
+  const result = await db
+    .select()
+    .from(contentCache)
+    .where(eq(contentCache.cacheKey, cacheKey))
+    .limit(1);
+
+  if (!result[0]) return null;
+
+  // Check if cache is stale (>24 hours old)
+  const ageMs = Date.now() - new Date(result[0].createdAt).getTime();
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  if (ageMs > TWENTY_FOUR_HOURS) return null;
+
+  return result[0].content;
+}
+
+/**
+ * Store generated content in the cache.
+ */
+export async function setCachedContent(
+  cacheKey: string,
+  contentType: ContentType,
+  content: unknown
+) {
+  // Upsert: delete old entry if exists, then insert fresh
+  await db
+    .delete(contentCache)
+    .where(eq(contentCache.cacheKey, cacheKey));
+  
+  await db
+    .insert(contentCache)
+    .values({ cacheKey, contentType, content });
+}
+
+// --- Error Reports ---
+
+/**
+ * Report an error on a specific content item.
+ * Returns the total number of reports on this item.
+ */
+export async function reportContentError(
+  contentId: string,
+  reportedByUserId: string,
+  reason?: string
+): Promise<number> {
+  // Check if this user already reported this content
+  const existing = await db
+    .select()
+    .from(errorReports)
+    .where(
+      and(
+        eq(errorReports.contentId, contentId),
+        eq(errorReports.reportedByUserId, reportedByUserId)
+      )
+    )
+    .limit(1);
+
+  if (existing.length === 0) {
+    await db.insert(errorReports).values({
+      contentId,
+      reportedByUserId,
+      reason,
+    });
+  }
+
+  // Count total reports for this content
+  const reportCount = await db
+    .select({ total: count() })
+    .from(errorReports)
+    .where(eq(errorReports.contentId, contentId));
+
+  return reportCount[0]?.total || 0;
+}
+
+/**
+ * Get the count of error reports for a content item.
+ */
+export async function getErrorReportCount(contentId: string): Promise<number> {
+  const result = await db
+    .select({ total: count() })
+    .from(errorReports)
+    .where(eq(errorReports.contentId, contentId));
+
+  return result[0]?.total || 0;
+}
+
+// --- Content Bookmarking (Mistake Vault) ---
+
+/**
+ * Toggle bookmark status on a content item (for the Mistake Vault).
+ */
+export async function toggleBookmark(contentId: string): Promise<boolean> {
+  const item = await getContentById(contentId);
+  if (!item) throw new Error("Content not found");
+
+  const newStatus = !item.isBookmarked;
+  await db
+    .update(generatedContent)
+    .set({ isBookmarked: newStatus })
+    .where(eq(generatedContent.id, contentId));
+
+  return newStatus;
+}
+
+/**
+ * Get only bookmarked content for a user (the Mistake Vault).
+ */
+export async function getBookmarkedContent(userId: string) {
+  return db
+    .select()
+    .from(generatedContent)
+    .where(
+      and(
+        eq(generatedContent.userId, userId),
+        eq(generatedContent.isBookmarked, true)
+      )
+    )
+    .orderBy(desc(generatedContent.createdAt));
+}
+
+// --- Study Streak Data ---
+
+/**
+ * Get distinct study dates for a user (for the streak heatmap).
+ * Returns an array of date strings (YYYY-MM-DD).
+ */
+export async function getStudyDates(userId: string): Promise<string[]> {
+  const result = await db
+    .select({
+      studyDate: sql<string>`DATE(${generatedContent.createdAt})`.as("study_date"),
+    })
+    .from(generatedContent)
+    .where(eq(generatedContent.userId, userId))
+    .groupBy(sql`DATE(${generatedContent.createdAt})`)
+    .orderBy(desc(sql`DATE(${generatedContent.createdAt})`));
+
+  return result.map((r) => r.studyDate);
 }

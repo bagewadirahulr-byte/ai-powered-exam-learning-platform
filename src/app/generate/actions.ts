@@ -1,12 +1,92 @@
 "use server";
+
 import { auth } from "@clerk/nextjs/server";
-import { getUserByClerkId, getUserCredits, saveGeneratedContent, deductCredits } from "@/lib/db/queries";
+import {
+  getUserByClerkId,
+  getUserCredits,
+  saveGeneratedContent,
+  deductCredits,
+  checkAndResetDailyCredits,
+  deductDailyCredit,
+  getCachedContent,
+  setCachedContent,
+} from "@/lib/db/queries";
 import { revalidatePath } from "next/cache";
 import { generateContentJSON } from "@/lib/gemini";
 import { rateLimit } from "@/lib/rate-limit";
+import { cookies } from "next/headers";
+import { SUPPORTED_LANGUAGES, SUPPORTED_EXAMS } from "@/config/constants";
+import crypto from "crypto";
+
+// ============================================
+// Content Generation Server Action
+// With: Daily Quotas, Device Cookie Lock,
+//       Content Caching, Vernacular Prompts
+// ============================================
+
+/** 24-hour cookie max-age in seconds */
+const DEVICE_COOKIE_MAX_AGE = 86400;
+
+/** Maximum daily generations per device (anti-Sybil) */
+const DEVICE_DAILY_LIMIT = 8;
 
 /**
- * Server Action to trigger AI study material generation synchronously.
+ * Reads the device-level tracking cookie.
+ * Returns { deviceId, date, used } or null.
+ */
+async function getDeviceCookie(): Promise<{
+  deviceId: string;
+  date: string;
+  used: number;
+} | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get("examai_device")?.value;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sets the device-level tracking cookie.
+ */
+async function setDeviceCookie(data: {
+  deviceId: string;
+  date: string;
+  used: number;
+}) {
+  const cookieStore = await cookies();
+  cookieStore.set("examai_device", JSON.stringify(data), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: DEVICE_COOKIE_MAX_AGE,
+    path: "/",
+  });
+}
+
+/**
+ * Builds a cache key from exam type, topic, content type, and language.
+ */
+function buildCacheKey(
+  examType: string | null,
+  topic: string,
+  type: string,
+  language: string
+): string {
+  const normalizedTopic = topic
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, "-");
+  return `${examType || "GENERAL"}_${normalizedTopic}_${type}_${language}`;
+}
+
+/**
+ * Server Action to trigger AI study material generation.
+ * Enforces: rate limiting, daily quotas, device cookie lock, and content caching.
  */
 export async function generateContent(formData: FormData) {
   const { userId: clerkId } = await auth();
@@ -18,70 +98,171 @@ export async function generateContent(formData: FormData) {
 
   if (!topic || !type) throw new Error("Missing required fields");
 
-  // 1a. Rate Limiting — max 10 generations per minute per user
+  // --- 1. Rate Limiting (per-minute burst protection) ---
   const { success: withinLimit } = rateLimit(`generate:${clerkId}`, 10, 60000);
   if (!withinLimit) {
     return {
       success: false,
-      message: "You're generating content too quickly. Please wait a minute and try again.",
+      message:
+        "You're generating content too quickly. Please wait a minute and try again.",
     };
   }
 
-  // 1. Get User from DB
+  // --- 2. Get User from DB ---
   const user = await getUserByClerkId(clerkId);
   if (!user) throw new Error("User not found");
 
-  // 2. Check Credits (Bypass if Annual Plan)
-  if (user.subscriptionStatus !== 'annual') {
-    const currentCredits = await getUserCredits(user.id);
-    if (currentCredits < 1) {
-      throw new Error("Insufficient credits. Please upgrade for more.");
+  // --- 3. Device Cookie Lock (Anti-Sybil) ---
+  const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+  let deviceData = await getDeviceCookie();
+
+  if (!deviceData || deviceData.date !== today) {
+    // New day or first visit: reset device tracking
+    deviceData = {
+      deviceId: crypto.randomUUID(),
+      date: today,
+      used: 0,
+    };
+  }
+
+  // Only enforce device limit on free-tier (non-subscribed, non-EWS) users
+  const isSubscribed = user.subscriptionStatus !== "free";
+  const isEwsActive =
+    user.ewsVerified ||
+    (user.ewsPending &&
+      user.ewsTempPassExpiry &&
+      new Date(user.ewsTempPassExpiry) > new Date());
+
+  if (!isSubscribed && !isEwsActive && deviceData.used >= DEVICE_DAILY_LIMIT) {
+    return {
+      success: false,
+      message:
+        "Daily device limit reached. This device has used all 8 free credits today. Please upgrade or verify your EWS status for more credits.",
+    };
+  }
+
+  // --- 4. Daily Credit Check ---
+  if (user.subscriptionStatus !== "annual") {
+    const dailyCreditsRemaining = await checkAndResetDailyCredits(user.id);
+    if (dailyCreditsRemaining <= 0) {
+      const ewsMessage = isEwsActive
+        ? "You have given your absolute best today! While we are dedicated to your academic success, we also prioritize your mental well-being. To ensure cognitive recovery, your 50 free AI credits are complete for today. We are honored to support your journey—please rest your mind, step away from the screen, and return tomorrow with fresh focus and strong mental health to learn more."
+        : "You've used all 8 free credits for today. Upgrade your plan or verify your EWS status for more daily credits.";
+      return { success: false, message: ewsMessage };
     }
   }
 
-  // 3. Generate Content Synchronously (Gemini)
+  // --- 5. Legacy Credit Check (subscription-based credits) ---
+  if (user.subscriptionStatus !== "annual") {
+    const currentCredits = await getUserCredits(user.id);
+    if (currentCredits < 1) {
+      return {
+        success: false,
+        message: "Insufficient credits. Please upgrade for more.",
+      };
+    }
+  }
+
+  // --- 6. Content Caching Check ---
+  const userLanguage = user.preferredLanguage || "english";
+  const userExam = user.targetExam || null;
+  const cacheKey = buildCacheKey(userExam, topic, type, userLanguage);
+
+  const cachedContent = await getCachedContent(cacheKey);
+  if (cachedContent) {
+    // Cache HIT: save to user's history, deduct credits, skip Gemini call
+    const newContent = await saveGeneratedContent({
+      userId: user.id,
+      topic,
+      type,
+      content: cachedContent,
+      examType: userExam,
+    });
+
+    if (user.subscriptionStatus !== "annual") {
+      await deductCredits(user.id, 1, `Generated ${type}: ${topic} (cached)`);
+      await deductDailyCredit(user.id);
+    }
+
+    // Update device cookie
+    deviceData.used += 1;
+    await setDeviceCookie(deviceData);
+
+    revalidatePath("/dashboard");
+    return { success: true, contentId: newContent.id, cached: true };
+  }
+
+  // --- 7. Build Vernacular Prompt ---
+  const languageLabel =
+    SUPPORTED_LANGUAGES[userLanguage as keyof typeof SUPPORTED_LANGUAGES]?.label || "English";
+  const examLabel = userExam
+    ? SUPPORTED_EXAMS[userExam as keyof typeof SUPPORTED_EXAMS]?.label
+    : null;
+
+  const languageInstruction =
+    userLanguage !== "english"
+      ? `\n\nIMPORTANT: Generate ALL content in ${languageLabel} language. Use ${languageLabel} script for all text. Only use English for technical terms that have no direct translation.`
+      : "";
+
+  const examInstruction = examLabel
+    ? `\n\nContext: This content is for a student preparing for the ${examLabel} exam. Tailor the difficulty, terminology, and focus areas to match ${examLabel} exam patterns and syllabus.`
+    : "";
+
   const prompts = {
     notes: `Generate comprehensive study notes for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "sections" array. Each section should have a "heading" and "content" (string).`,
+      Respond with a JSON object containing a "sections" array. Each section should have a "heading" and "content" (string).${examInstruction}${languageInstruction}`,
     quiz: `Generate a multiple-choice quiz for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "questions" array. Each question should have "question", "options" (array of 4 strings), "correctAnswer" (string, must match one of the options), and "explanation".`,
+      Respond with a JSON object containing a "questions" array. Each question should have "question", "options" (array of 4 strings), "correctAnswer" (string, must match one of the options), and "explanation".${examInstruction}${languageInstruction}`,
     flashcards: `Generate study flashcards for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "cards" array. Each card should have a "front" (question/term) and "back" (answer/definition).`,
+      Respond with a JSON object containing a "cards" array. Each card should have a "front" (question/term) and "back" (answer/definition).${examInstruction}${languageInstruction}`,
     qna: `Generate detailed Questions and Answers for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "pairs" array. Each pair should have a "question" and "answer".`,
+      Respond with a JSON object containing a "pairs" array. Each pair should have a "question" and "answer".${examInstruction}${languageInstruction}`,
   };
 
   const prompt = prompts[type as keyof typeof prompts];
 
   try {
-    console.log(`[Action] Generating ${type} for ${topic}...`);
-    // Generate JSON from Gemini
+    console.log(
+      `[Action] Generating ${type} for "${topic}" (${languageLabel}${examLabel ? `, ${examLabel}` : ""})...`
+    );
+
+    // --- 8. Generate JSON from Gemini ---
     const content = await generateContentJSON(prompt);
 
-    // Save to Database
+    // --- 9. Save to Database ---
     const newContent = await saveGeneratedContent({
       userId: user.id,
       topic,
       type,
       content,
+      examType: userExam,
     });
 
-    // Deduct Credit (Skip if Annual Plan)
-    if (user.subscriptionStatus !== 'annual') {
+    // --- 10. Cache the result for future users ---
+    await setCachedContent(cacheKey, type, content);
+
+    // --- 11. Deduct Credits ---
+    if (user.subscriptionStatus !== "annual") {
       await deductCredits(user.id, 1, `Generated ${type}: ${topic}`);
+      await deductDailyCredit(user.id);
     }
+
+    // --- 12. Update Device Cookie ---
+    deviceData.used += 1;
+    await setDeviceCookie(deviceData);
 
     console.log(`[Action] Generation successful: ID ${newContent.id}`);
 
     revalidatePath("/dashboard");
-    // Return the new content ID so the frontend can redirect straight to it!
     return { success: true, contentId: newContent.id };
   } catch (err) {
     console.error(`[Action] Generation FAILED:`, err);
-    // Return the exact error message so the user can see if it's an API quota/key issue
-    return { 
-      success: false, 
-      message: err instanceof Error ? err.message : "Failed to generate content." 
+    return {
+      success: false,
+      message:
+        err instanceof Error
+          ? err.message
+          : "Failed to generate content. Please try again.",
     };
   }
 }

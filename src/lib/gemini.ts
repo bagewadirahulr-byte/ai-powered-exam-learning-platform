@@ -12,7 +12,7 @@ if (!process.env.GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // --- Model fallback chain (if primary is overloaded, try the next) ---
-const MODEL_CHAIN = ["gemini-3-flash", "gemini-2.5-flash"];
+const MODEL_CHAIN = ["gemini-flash-lite-latest", "gemini-flash-latest"];
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1500;
 
@@ -42,9 +42,20 @@ function isRetryableError(error: unknown): boolean {
 }
 
 /**
+ * Helper: checks if a model might not exist yet (404 error).
+ */
+function isNotFoundError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes("404 Not Found") || error.message.includes("is not found for API version");
+  }
+  return false;
+}
+
+/**
  * Standard text generation with retry + model fallback.
  */
 export async function generateContentText(prompt: string): Promise<string> {
+  let lastError: unknown = null;
   for (const modelName of MODEL_CHAIN) {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -53,27 +64,30 @@ export async function generateContentText(prompt: string): Promise<string> {
         const result = await model.generateContent(prompt);
         return result.response.text();
       } catch (error) {
+        lastError = error;
         if (isRetryableError(error) && attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt);
           console.warn(`[Gemini] ${modelName} returned retryable error. Retrying in ${delay}ms...`);
           await sleep(delay);
           continue;
         }
-        if (isRetryableError(error)) {
-          console.warn(`[Gemini] ${modelName} exhausted retries. Trying next model...`);
+        if (isRetryableError(error) || isNotFoundError(error)) {
+          console.warn(`[Gemini] ${modelName} exhausted retries or not found. Trying next model...`);
           break; // Try next model in chain
         }
         throw error; // Non-retryable error — throw immediately
       }
     }
   }
-  throw new Error("AI service is temporarily unavailable. All models are experiencing high demand. Please try again in a minute.");
+  const errorMsg = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`AI service is temporarily unavailable. All models failed. Last API Error: ${errorMsg}`);
 }
 
 /**
  * Ensures Gemini returns structural JSON — with retry + model fallback.
  */
 export async function generateContentJSON(prompt: string): Promise<unknown> {
+  let lastError: unknown = null;
   for (const modelName of MODEL_CHAIN) {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -95,20 +109,22 @@ export async function generateContentJSON(prompt: string): Promise<unknown> {
           throw new Error("AI returned invalid JSON structure.");
         }
       } catch (error) {
+        lastError = error;
         if (isRetryableError(error) && attempt < MAX_RETRIES) {
           const delay = BASE_DELAY_MS * Math.pow(2, attempt);
           console.warn(`[Gemini] ${modelName} returned retryable error. Retrying in ${delay}ms...`);
           await sleep(delay);
           continue;
         }
-        if (isRetryableError(error)) {
-          console.warn(`[Gemini] ${modelName} exhausted retries. Trying next model...`);
+        if (isRetryableError(error) || isNotFoundError(error)) {
+          console.warn(`[Gemini] ${modelName} exhausted retries or not found. Trying next model...`);
           break; // Try next model in chain
         }
         throw error; // Non-retryable error — throw immediately
       }
     }
   }
-  throw new Error("AI service is temporarily unavailable. All models are experiencing high demand. Please try again in a minute.");
+  const errorMsg = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`AI service is temporarily unavailable. All models failed. Last API Error: ${errorMsg}`);
 }
 

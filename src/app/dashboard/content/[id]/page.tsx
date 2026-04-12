@@ -2,7 +2,7 @@
 // Generated Content Viewer
 // ============================================
 
-import { getContentById, getUserByClerkId } from "@/lib/db/queries";
+import { getContentById, getUserByClerkId, getErrorReportCount } from "@/lib/db/queries";
 import { ChevronLeft } from "lucide-react";
 import PDFDownload from "@/components/ui/PDFDownload";
 import { currentUser } from "@clerk/nextjs/server";
@@ -12,6 +12,7 @@ import Navbar from "@/components/layout/Navbar";
 import { CONTENT_TYPES } from "@/config/constants";
 import InteractiveQuiz from "@/components/ui/InteractiveQuiz";
 import Flashcard from "@/components/ui/Flashcard";
+import ContentActionBar from "./ContentActionBar";
 
 
 export const dynamic = "force-dynamic";
@@ -39,9 +40,13 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
     redirect("/dashboard");
   }
 
-  const { type, topic, content, createdAt } = contentItem;
+  const { type, topic, content, createdAt, isBookmarked, examType } = contentItem;
   const data = content as GeneratedData;
   const config = CONTENT_TYPES[type as keyof typeof CONTENT_TYPES];
+
+  // Check if content has been flagged by community
+  const errorReportCount = await getErrorReportCount(id);
+  const isFlagged = errorReportCount >= 3;
 
   // Render different UI based on the type
   const renderContentBody = () => {
@@ -59,7 +64,7 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
         );
 
       case "quiz":
-        return <InteractiveQuiz questions={data.questions || []} />;
+        return <InteractiveQuiz questions={data.questions || []} examType={examType} />;
 
       case "flashcards":
         return (
@@ -122,7 +127,7 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
 
           </div>
 
-          <header className="mb-10 text-center sm:text-left">
+          <header className="mb-6 text-center sm:text-left">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <div className="flex items-center gap-3 justify-center sm:justify-start">
                 <span className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${config?.color || 'from-gray-600 to-gray-800'} text-2xl shadow-lg`}>
@@ -141,7 +146,37 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
             </h1>
           </header>
 
-          <div className="mt-8">
+          {/* Action Bar: Bookmark, Ask Tutor, Report Error, Listen */}
+          <div className="mb-8">
+            <ContentActionBar
+              contentId={id}
+              topic={topic}
+              isBookmarked={isBookmarked}
+              contentType={type}
+              contentText={
+                // Extract plain text for TTS
+                type === "notes"
+                  ? (data.sections?.map((s) => `${s.heading}. ${s.content}`).join(". ") || topic)
+                  : type === "qna"
+                  ? (data.pairs?.map((p) => `Question: ${p.question}. Answer: ${p.answer}`).join(". ") || topic)
+                  : type === "flashcards"
+                  ? (data.cards?.map((c) => `${c.front}. ${c.back}`).join(". ") || topic)
+                  : topic
+              }
+              language={dbUser.preferredLanguage || "english"}
+            />
+          </div>
+
+          {/* Community Flagged Warning */}
+          {isFlagged && (
+            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+              <p className="text-sm text-amber-300">
+                ⚠️ <strong>Community Notice:</strong> This content has been flagged by multiple users for potential inaccuracies. Please verify critical information independently.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-4">
             {renderContentBody()}
           </div>
         </div>

@@ -12,6 +12,7 @@ import { APP_NAME, APP_DESCRIPTION, APP_URL } from "@/config/constants";
 import SplashScreen from "@/components/ui/SplashScreen";
 import CookieConsent from "@/components/ui/CookieConsent";
 import AnalyticsProvider from "@/components/ui/AnalyticsProvider";
+import ServiceWorkerRegistrar from "@/components/ui/ServiceWorkerRegistrar";
 
 // --- Google Font: Inter ---
 const inter = Inter({
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
+  manifest: "/manifest.json",
   keywords: [
     "AI",
     "exam preparation",
@@ -36,6 +38,14 @@ export const metadata: Metadata = {
     "flashcards",
     "learning platform",
     "Gemini AI",
+    "UPSC preparation",
+    "SSC CGL",
+    "IBPS exam",
+    "RRB NTPC",
+    "government exam",
+    "EWS students",
+    "free education",
+    "AI tutor",
   ],
   openGraph: {
     type: "website",
@@ -90,6 +100,7 @@ export default function RootLayout({
           <SplashScreen />
           <AnalyticsProvider />
           <CookieConsent />
+          <ServiceWorkerRegistrar />
           {children}
         </ClerkProvider>
       </body>
