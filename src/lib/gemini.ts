@@ -100,7 +100,9 @@ export async function generateContentJSON(prompt: string): Promise<unknown> {
         });
 
         const result = await model.generateContent(prompt);
-        const text = result.response.text();
+        let text = result.response.text();
+        // Sometimes Gemini wraps JSON output in markdown blocks even with responseMimeType set
+        text = text.replace(/```json/gi, "").replace(/```/g, "").trim();
 
         try {
           return JSON.parse(text);
