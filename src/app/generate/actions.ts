@@ -74,14 +74,15 @@ function buildCacheKey(
   examType: string | null,
   topic: string,
   type: string,
-  language: string
+  language: string,
+  level: string
 ): string {
   const normalizedTopic = topic
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s]/g, "")
     .replace(/\s+/g, "-");
-  return `${examType || "GENERAL"}_${normalizedTopic}_${type}_${language}`;
+  return `${examType || "GENERAL"}_${normalizedTopic}_${type}_${language}_${level.toLowerCase()}`;
 }
 
 /**
@@ -169,7 +170,7 @@ export async function generateContent(formData: FormData) {
   // --- 6. Content Caching Check ---
   const userLanguage = user.preferredLanguage || "english";
   const userExam = user.targetExam || null;
-  const cacheKey = buildCacheKey(userExam, topic, type, userLanguage);
+  const cacheKey = buildCacheKey(userExam, topic, type, userLanguage, level);
 
   const cachedContent = await getCachedContent(cacheKey);
   if (cachedContent) {
@@ -213,15 +214,21 @@ export async function generateContent(formData: FormData) {
     ? `\n\nContext: This content is for a student preparing for the ${examLabel} exam. Tailor the difficulty, terminology, and focus areas to match ${examLabel} exam patterns and syllabus.`
     : "";
 
+  const levelInstruction = level === "Beginner" 
+    ? "\n\nDifficulty: Beginner. Use simple language, analogies, and explain foundational concepts clearly. Avoid overly complex jargon."
+    : level === "Advanced"
+    ? "\n\nDifficulty: Advanced. Use highly technical language, explore deep edge-cases, and assume the reader has a strong foundational understanding. Do not waste time on basics."
+    : "\n\nDifficulty: Intermediate. Balance foundational knowledge with technical depth.";
+
   const prompts = {
-    notes: `Generate comprehensive study notes for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "sections" array. Each section should have a "heading" and "content" (string).${examInstruction}${languageInstruction}`,
-    quiz: `Generate a multiple-choice quiz for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "questions" array. Each question should have "question", "options" (array of 4 strings), "correctAnswer" (string, must match one of the options), and "explanation".${examInstruction}${languageInstruction}`,
-    flashcards: `Generate study flashcards for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "cards" array. Each card should have a "front" (question/term) and "back" (answer/definition).${examInstruction}${languageInstruction}`,
-    qna: `Generate detailed Questions and Answers for the topic: "${topic}" at level: "${level}". 
-      Respond with a JSON object containing a "pairs" array. Each pair should have a "question" and "answer".${examInstruction}${languageInstruction}`,
+    notes: `Generate comprehensive study notes for the topic: "${topic}". 
+      Respond with a JSON object containing a "sections" array. Each section should have a "heading" and "content" (string).${levelInstruction}${examInstruction}${languageInstruction}`,
+    quiz: `Generate a multiple-choice quiz for the topic: "${topic}". 
+      Respond with a JSON object containing a "questions" array. Each question should have "question", "options" (array of 4 strings), "correctAnswer" (string, must match one of the options), and "explanation".${levelInstruction}${examInstruction}${languageInstruction}`,
+    flashcards: `Generate study flashcards for the topic: "${topic}". 
+      Respond with a JSON object containing a "cards" array. Each card should have a "front" (question/term) and "back" (answer/definition).${levelInstruction}${examInstruction}${languageInstruction}`,
+    qna: `Generate detailed Questions and Answers for the topic: "${topic}". 
+      Respond with a JSON object containing a "pairs" array. Each pair should have a "question" and "answer".${levelInstruction}${examInstruction}${languageInstruction}`,
   };
 
   const prompt = prompts[type as keyof typeof prompts];
