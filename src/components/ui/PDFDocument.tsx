@@ -1,12 +1,29 @@
 "use client";
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+
+// Register fonts to support Indian Vernacular Languages (Devanagari / Hindi / Marathi etc)
+Font.register({
+  family: 'NotoSansDevanagari',
+  src: 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf'
+});
+
+// Generic English Font
+Font.register({
+  family: 'Roboto',
+  src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf'
+});
 
 const styles = StyleSheet.create({
   page: {
     padding: 50,
     backgroundColor: "#ffffff",
-    fontFamily: "Helvetica",
+    fontFamily: "Roboto",
+  },
+  pageDevanagari: {
+    padding: 50,
+    backgroundColor: "#ffffff",
+    fontFamily: "NotoSansDevanagari",
   },
   header: {
     marginBottom: 30,
@@ -135,9 +152,15 @@ interface PDFDocumentProps {
   };
 }
 
-const PDFDocument: React.FC<PDFDocumentProps> = ({ title, type, data }) => (
+const PDFDocument: React.FC<PDFDocumentProps> = ({ title, type, data }) => {
+  // Detect if content contains Devanagari (Hindi) and swap the page style to the supported font
+  const contentString = JSON.stringify(data) + title;
+  const isDevanagari = /[\u0900-\u097F]/.test(contentString);
+  const pageStyle = isDevanagari ? styles.pageDevanagari : styles.page;
+
+  return (
   <Document>
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" style={pageStyle}>
       <View style={styles.header}>
         <Text style={styles.subtitle}>{type} Study Material</Text>
         <Text style={styles.title}>{title}</Text>
@@ -180,6 +203,7 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ title, type, data }) => (
       )} fixed />
     </Page>
   </Document>
-);
+  );
+};
 
 export default PDFDocument;
