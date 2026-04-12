@@ -145,8 +145,9 @@ export async function generateContent(formData: FormData) {
     };
   }
 
-  // --- 4. Daily Credit Check ---
-  if (user.subscriptionStatus !== "annual") {
+  // --- 4. Credit Checks Based on Plan ---
+  if (user.subscriptionStatus === "free") {
+    // Free / EWS Users: Use Daily Credits
     const dailyCreditsRemaining = await checkAndResetDailyCredits(user.id);
     if (dailyCreditsRemaining < creditCost) {
       const ewsMessage = isEwsActive
@@ -154,15 +155,13 @@ export async function generateContent(formData: FormData) {
         : "You've used all 8 free credits for today. Upgrade your plan or verify your EWS status for more daily credits.";
       return { success: false, message: ewsMessage };
     }
-  }
-
-  // --- 5. Legacy Credit Check (subscription-based credits) ---
-  if (user.subscriptionStatus !== "annual") {
+  } else if (user.subscriptionStatus !== "annual") {
+    // Monthly / Half-Yearly Users: Use Monthly Credits
     const currentCredits = await getUserCredits(user.id);
     if (currentCredits < creditCost) {
       return {
         success: false,
-        message: "Insufficient credits. Please upgrade for more.",
+        message: "Insufficient premium credits. Please renew your subscription.",
       };
     }
   }
@@ -183,10 +182,11 @@ export async function generateContent(formData: FormData) {
       examType: userExam,
     });
 
-    if (user.subscriptionStatus !== "annual") {
-      await deductCredits(user.id, creditCost, `Generated ${type}: ${topic} (cached, ${topicMode})`);
+    if (user.subscriptionStatus === "free") {
       await deductDailyCredit(user.id);
-      if (creditCost === 2) await deductDailyCredit(user.id); // Deduct second daily credit for general topics
+      if (creditCost === 2) await deductDailyCredit(user.id); // Deduct 2nd credit
+    } else if (user.subscriptionStatus !== "annual") {
+      await deductCredits(user.id, creditCost, `Generated ${type}: ${topic} (cached, ${topicMode})`);
     }
 
     // Update device cookie
@@ -247,10 +247,11 @@ export async function generateContent(formData: FormData) {
     await setCachedContent(cacheKey, type, content);
 
     // --- 11. Deduct Credits ---
-    if (user.subscriptionStatus !== "annual") {
-      await deductCredits(user.id, creditCost, `Generated ${type}: ${topic} (${topicMode})`);
+    if (user.subscriptionStatus === "free") {
       await deductDailyCredit(user.id);
-      if (creditCost === 2) await deductDailyCredit(user.id); // Deduct second daily credit for general topics
+      if (creditCost === 2) await deductDailyCredit(user.id); // Deduct 2nd credit
+    } else if (user.subscriptionStatus !== "annual") {
+      await deductCredits(user.id, creditCost, `Generated ${type}: ${topic} (${topicMode})`);
     }
 
     // --- 12. Update Device Cookie ---
