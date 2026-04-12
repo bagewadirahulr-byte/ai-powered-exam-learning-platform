@@ -5,7 +5,7 @@
 // ============================================
 
 // --- Credit System ---
-export const FREE_CREDITS = 5; // Credits given to new users on signup
+export const FREE_CREDITS = 8; // Daily credits for General students (EWS gets 50)
 export const CREDITS_PER_GENERATION = 1; // Credits deducted per AI generation
 
 // --- Daily Credit Limits (Social Impact) ---
@@ -93,16 +93,17 @@ export const MOOD_EMOJIS = [
 export const PLANS = {
   free: {
     id: "free",
-    name: "Free",
+    name: "General Student",
     price: 0,
     duration: "forever",
     durationMonths: 0,
     credits: 8,
-    creditsLabel: "8 daily credits",
+    creditsLabel: "8 daily credits (resets at midnight)",
     features: [
-      "8 free AI generations / day",
-      "EWS Verified: 50 daily credits",
+      "8 AI generations per day",
       "Notes, Quizzes, Flashcards, Q&A",
+      "AI Tutor (1 credit/message)",
+      "EWS students get 50 daily credits free",
       "Basic support",
     ],
   },

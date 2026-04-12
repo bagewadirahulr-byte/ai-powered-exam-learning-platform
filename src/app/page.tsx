@@ -300,11 +300,11 @@ export default function LandingPage() {
             </span>
             <h2 className="mb-4 text-4xl font-bold text-white">
               Your Study Guide in{" "}
-              <span className="gradient-text">4 Simple Steps</span>
+              <span className="gradient-text">5 Simple Steps</span>
             </h2>
             <p className="mx-auto max-w-2xl text-gray-400">
-              Follow this quick guide to generate AI-powered study materials
-              tailored to your topic and skill level.
+              Set up your profile, select your target exam, and let our AI generate
+              exam-specific study materials in your preferred language.
             </p>
           </div>
 
@@ -313,22 +313,46 @@ export default function LandingPage() {
             {/* Connecting line */}
             <div className="absolute left-7 top-10 bottom-10 hidden w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-green-500 md:block" />
 
-            {/* Step 1: Enter Topic */}
+            {/* Step 1: Set Up Profile */}
+            <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-600 text-xl font-bold text-white shadow-lg shadow-pink-500/30">
+                1
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 text-xl font-bold text-white">
+                  ⚙️ Set Up Your Profile
+                </h3>
+                <p className="mb-3 text-sm text-gray-400">
+                  Go to <span className="font-medium text-blue-400">Settings</span> and select your
+                  identity: <strong className="text-white">General Student</strong> (8 daily credits) or
+                  <strong className="text-white"> EWS Student</strong> (50 daily credits — upload your certificate for instant verification).
+                  Choose your target exam and preferred language.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {["UPSC", "SSC CGL", "IBPS", "RRB NTPC"].map((exam) => (
+                    <span key={exam} className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-400 font-medium">
+                      {exam}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Enter Topic */}
             <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white shadow-lg shadow-blue-500/30">
-                1
+                2
               </div>
               <div className="flex-1">
                 <h3 className="mb-2 text-xl font-bold text-white">
                   ✏️ Enter Your Topic
                 </h3>
                 <p className="mb-3 text-sm text-gray-400">
-                  Go to the <span className="font-medium text-blue-400">Generate</span> page
-                  from your dashboard. In the topic field, type any subject
-                  you want to study — for example:
+                  Go to the <span className="font-medium text-blue-400">Generate</span> page.
+                  Type any subject — the AI automatically tailors content to your selected exam and language.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {["Photosynthesis", "World War II", "Newton's Laws", "Data Structures", "Indian Constitution"].map((t) => (
+                  {["Indian Polity", "Quantitative Aptitude", "Current Affairs", "Reasoning", "General Science"].map((t) => (
                     <span key={t} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
                       {t}
                     </span>
@@ -337,19 +361,17 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Step 2: Choose Content Type */}
+            {/* Step 3: Choose Content Type & Difficulty */}
             <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-600 text-xl font-bold text-white shadow-lg shadow-purple-500/30">
-                2
+                3
               </div>
               <div className="flex-1">
                 <h3 className="mb-2 text-xl font-bold text-white">
-                  📋 Choose Your Content Type
+                  📋 Choose Content Type & Difficulty
                 </h3>
                 <p className="mb-3 text-sm text-gray-400">
-                  Select the type of study material you want the AI to
-                  generate. Each type is designed for a different learning
-                  style:
+                  Select what to generate and the difficulty level. Each costs 1 daily credit.
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 text-center">
@@ -372,40 +394,6 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Step 3: Select Difficulty */}
-            <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-500 to-orange-600 text-xl font-bold text-white shadow-lg shadow-yellow-500/30">
-                3
-              </div>
-              <div className="flex-1">
-                <h3 className="mb-2 text-xl font-bold text-white">
-                  🎯 Select Difficulty Level
-                </h3>
-                <p className="mb-3 text-sm text-gray-400">
-                  Pick a difficulty that matches your current understanding.
-                  This helps the AI adjust the complexity and depth of the
-                  content:
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2">
-                    <span>🌱</span>
-                    <span className="text-sm font-medium text-green-400">Beginner</span>
-                    <span className="text-xs text-gray-500">— Easy, simple terms</span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-4 py-2">
-                    <span>⚡</span>
-                    <span className="text-sm font-medium text-yellow-400">Intermediate</span>
-                    <span className="text-xs text-gray-500">— Balanced depth</span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2">
-                    <span>🔥</span>
-                    <span className="text-sm font-medium text-red-400">Advanced</span>
-                    <span className="text-xs text-gray-500">— Competitive level</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Step 4: Generate & Study */}
             <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-xl font-bold text-white shadow-lg shadow-green-500/30">
@@ -413,31 +401,54 @@ export default function LandingPage() {
               </div>
               <div className="flex-1">
                 <h3 className="mb-2 text-xl font-bold text-white">
-                  🚀 Generate & Start Studying
+                  🚀 Generate & Study
                 </h3>
                 <p className="mb-3 text-sm text-gray-400">
-                  Hit the <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-400">Generate Content (1 Credit)</span> button
-                  and wait a few seconds. The AI will create your study
-                  material instantly. You can then:
+                  Hit <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-400">Generate Content (1 Credit)</span> and
+                  your exam-specific material appears instantly. Then:
                 </p>
                 <ul className="space-y-2 text-sm text-gray-400">
                   <li className="flex items-center gap-2">
                     <span className="text-green-400">✓</span>
-                    Read through AI-generated notes with clear sections
+                    🔊 Listen to content with native language TTS audio
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-green-400">✓</span>
-                    Take interactive quizzes to test your knowledge
+                    ⭐ Save mistakes to your Vault for targeted revision
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-green-400">✓</span>
-                    Flip through flashcards for quick revision
+                    📥 Download as PDF for offline study
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-green-400">✓</span>
-                    Download content as PDF for offline study
+                    ⏱️ Take timed quizzes with real exam negative marking
                   </li>
                 </ul>
+              </div>
+            </div>
+
+            {/* Step 5: Ask AI Tutor */}
+            <div className="glass-card relative flex flex-col gap-6 p-6 transition-all duration-300 hover:border-white/20 md:flex-row md:items-start">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-xl font-bold text-white shadow-lg shadow-cyan-500/30">
+                5
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 text-xl font-bold text-white">
+                  🧑‍🏫 Ask the AI Tutor
+                </h3>
+                <p className="mb-3 text-sm text-gray-400">
+                  Confused by a question? Click <span className="font-medium text-blue-400">Ask Tutor</span> and
+                  our context-locked AI chatbot already knows exactly what you&apos;re studying.
+                  It costs 1 credit per message and responds in your preferred language.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {["Doubt Clearance", "Concept Breakdown", "Exam Tips", "Wrong Answer Explanation"].map((t) => (
+                    <span key={t} className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-400 font-medium">
+                      {t}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -456,7 +467,7 @@ export default function LandingPage() {
               Simple, <span className="gradient-text">Affordable</span> Plans
             </h2>
             <p className="mx-auto max-w-xl text-gray-400">
-              Start free with 8 daily credits. Upgrade anytime for unlimited AI power.
+              General students get 8 daily credits free. EWS students get 50. Upgrade anytime for unlimited AI power.
             </p>
           </div>
 
@@ -500,8 +511,8 @@ export default function LandingPage() {
             Learning?
           </h2>
           <p className="mx-auto mb-8 max-w-xl text-gray-400">
-            Join thousands of students using AI to prepare smarter, not harder.
-            Start with 5 free credits today.
+            Join thousands of aspirants using AI to prepare smarter, not harder.
+            Get 8 free daily credits — EWS students get 50.
           </p>
           <Link href="/dashboard">
             <Button variant="primary" size="lg">

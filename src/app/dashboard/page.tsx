@@ -7,7 +7,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { CONTENT_TYPES, FREE_CREDITS } from "@/config/constants";
-import { getUserByClerkId, getUserCredits, getUserContent, createUser, checkAndResetDailyCredits } from "@/lib/db/queries";
+import { getUserByClerkId, getUserCredits, getUserContent, createUser } from "@/lib/db/queries";
 import DashboardContent from "@/components/dashboard/DashboardContent";
 import DashboardMoodWidget from "./DashboardMoodWidget";
 import BetaFeatureCards from "@/components/dashboard/BetaFeatureCards";
@@ -37,10 +37,13 @@ export default async function DashboardPage() {
     }
 
     if (dbUser) {
-      credits = await checkAndResetDailyCredits(dbUser.id);
+      credits = await getUserCredits(dbUser.id);
       contentHistory = await getUserContent(dbUser.id);
     }
   }
+
+  // Pre-compute time threshold for heatmap (uses new Date() which is stable in server components)
+  const thirtyDaysAgo = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000);
 
   return (
     <>
@@ -48,7 +51,7 @@ export default async function DashboardPage() {
       <main className="min-h-screen px-6 pt-24 pb-12">
         <div className="mx-auto max-w-6xl">
           {/* ===== Welcome Section ===== */}
-          <div className="mb-10 animate-fade-in-up">
+          <div className="mb-10">
             <h1 className="mb-2 text-3xl font-bold text-white">
               Welcome back,{" "}
               <span className="gradient-text">
@@ -62,11 +65,11 @@ export default async function DashboardPage() {
           </div>
 
           {/* ===== User Info Card ===== */}
-          <div className="glass-card mb-10 p-6 animate-fade-in-up delay-100">
+          <div className="glass-card mb-10 p-6">
             <h2 className="mb-4 text-lg font-semibold text-white">
               Your Profile
             </h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
               {/* Name */}
               <div>
                 <p className="text-xs uppercase tracking-wider text-gray-500">
@@ -76,25 +79,41 @@ export default async function DashboardPage() {
                   {clerkUser?.fullName || "N/A"}
                 </p>
               </div>
-              {/* Email */}
+              {/* Student Type */}
               <div>
                 <p className="text-xs uppercase tracking-wider text-gray-500">
-                  Email
+                  Student Type
                 </p>
-                <p className="mt-1 font-medium text-white">
-                  {clerkUser?.emailAddresses[0]?.emailAddress || "N/A"}
+                <p className="mt-1 font-medium">
+                  {dbUser?.ewsVerified ? (
+                    <span className="inline-block rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400 border border-green-500/20">🛡️ EWS Verified</span>
+                  ) : dbUser?.ewsPending ? (
+                    <span className="inline-block rounded-full bg-yellow-500/10 px-3 py-1 text-sm font-medium text-yellow-400 border border-yellow-500/20">⏳ EWS Pending</span>
+                  ) : (
+                    <span className="inline-block rounded-full bg-gray-500/10 px-3 py-1 text-sm font-medium text-gray-400 border border-gray-500/20">📚 General</span>
+                  )}
                 </p>
               </div>
-              {/* Credits */}
+              {/* Daily Credits */}
               <div>
                 <p className="text-xs uppercase tracking-wider text-gray-500">
-                  Credits Remaining
+                  Daily Credits
                 </p>
                 <p className="mt-1 text-2xl font-bold text-green-400">
-                  {dbUser?.subscriptionStatus === 'annual' ? 'Unlimited ∞' : credits}
+                  {dbUser?.subscriptionStatus === 'annual' ? '∞ Unlimited' : `${dbUser?.dailyCredits ?? 8} / ${dbUser?.ewsVerified ? 50 : 8}`}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">Resets daily at midnight</p>
+              </div>
+              {/* Target Exam */}
+              <div>
+                <p className="text-xs uppercase tracking-wider text-gray-500">
+                  Target Exam
+                </p>
+                <p className="mt-1 inline-block rounded-full bg-indigo-500/10 px-3 py-1 text-sm font-medium text-indigo-400 border border-indigo-500/20">
+                  {dbUser?.targetExam ? dbUser.targetExam.replace('_', ' ') : '⚙️ Set in Settings'}
                 </p>
               </div>
-              {/* Plan */}
+              {/* Plan & Links */}
               <div>
                 <p className="text-xs uppercase tracking-wider text-gray-500">
                   Plan
@@ -102,8 +121,7 @@ export default async function DashboardPage() {
                 <p className="mt-1 inline-block rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400">
                   {dbUser?.subscriptionStatus === 'monthly' ? '📦 Monthly' :
                    dbUser?.subscriptionStatus === 'half_yearly' ? '⭐ Half-Yearly' :
-                   dbUser?.subscriptionStatus === 'annual' ? '💎 Annual' : 
-                   dbUser?.ewsVerified ? '🎓 EWS Free Platform' : '🆓 Free'}
+                   dbUser?.subscriptionStatus === 'annual' ? '💎 Annual' : '🆓 Free'}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   <Link
@@ -124,7 +142,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* ===== Quick Actions — Generate Content ===== */}
-          <div className="mb-6 animate-fade-in-up delay-200">
+          <div className="mb-6">
             <h2 className="mb-4 text-lg font-semibold text-white flex justify-between items-end">
               <div>Generate Content</div>
               <Link href="/dashboard/history" className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">
@@ -153,7 +171,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* ===== Progress, Consistency & Wellness (Phase 4/6) ===== */}
-          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 mb-10 animate-fade-in-up delay-300">
+          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 mb-10">
             {/* Syllabus Tracker */}
             <div className="glass-card p-6 md:col-span-1 border-t-4 border-t-indigo-500 flex flex-col">
               <h3 className="font-bold text-white mb-2 text-lg">Syllabus Tracker</h3>
@@ -190,7 +208,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-black text-emerald-400">
-                    {new Set(contentHistory.filter(i => new Date(i.createdAt).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000).map(i => new Date(i.createdAt).toISOString().split('T')[0])).size}
+                    {new Set(contentHistory.filter(i => new Date(i.createdAt).getTime() > thirtyDaysAgo.getTime()).map(i => new Date(i.createdAt).toISOString().split('T')[0])).size}
                   </div>
                   <div className="text-xs text-gray-500 uppercase tracking-widest">Active Days</div>
                 </div>
@@ -254,18 +272,16 @@ export default async function DashboardPage() {
             </Link>
           </div>
           {/* ===== Beta Features row ===== */}
-          <div className="mb-10 animate-fade-in-up delay-300">
+          <div className="mb-10">
             <h2 className="mb-4 text-lg font-semibold text-white">Upcoming Features <span className="ml-2 font-mono text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30 uppercase">Beta / Coming Soon</span></h2>
             <BetaFeatureCards />
           </div>
 
           {/* ===== Content History (Searchable & Filterable) ===== */}
-          <div className="animate-fade-in-up delay-300">
-            <DashboardContent initialHistory={contentHistory.map(item => ({
-              ...item,
-              content: item.content as Record<string, unknown>,
-            }))} />
-          </div>
+          <DashboardContent initialHistory={contentHistory.map(item => ({
+            ...item,
+            content: item.content as Record<string, unknown>,
+          }))} />
         </div>
       </main>
     </>

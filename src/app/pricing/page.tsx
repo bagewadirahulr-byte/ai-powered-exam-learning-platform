@@ -137,7 +137,7 @@ export default function PricingPage() {
             Plans that fit your <span className="gradient-text">learning goals</span>
           </h1>
           <p className="text-xl text-gray-400">
-            Start free with 8 daily credits. Upgrade anytime with UPI, cards, or net banking.
+            General students get 8 daily credits free. EWS students get 50. Upgrade for unlimited power.
           </p>
         </div>
 
