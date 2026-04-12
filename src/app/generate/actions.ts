@@ -138,7 +138,7 @@ export async function generateContent(formData: FormData) {
       user.ewsTempPassExpiry &&
       new Date(user.ewsTempPassExpiry) > new Date());
 
-  if (!isSubscribed && !isEwsActive && deviceData.used >= DEVICE_DAILY_LIMIT) {
+  if (!isSubscribed && !isEwsActive && (deviceData.used + creditCost) > DEVICE_DAILY_LIMIT) {
     return {
       success: false,
       message:
@@ -191,7 +191,7 @@ export async function generateContent(formData: FormData) {
     }
 
     // Update device cookie
-    deviceData.used += 1;
+    deviceData.used += creditCost;
     await setDeviceCookie(deviceData);
 
     revalidatePath("/dashboard");
@@ -262,7 +262,7 @@ export async function generateContent(formData: FormData) {
     }
 
     // --- 12. Update Device Cookie ---
-    deviceData.used += 1;
+    deviceData.used += creditCost;
     await setDeviceCookie(deviceData);
 
     console.log(`[Action] Generation successful: ID ${newContent.id}`);
