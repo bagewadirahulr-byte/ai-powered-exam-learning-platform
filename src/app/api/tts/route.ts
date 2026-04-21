@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { EdgeTTS } from 'node-edge-tts';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
-import os from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
+import * as os from 'os';
 
 // Map internal languages to Microsoft Edge Neural voices
 const EDGE_VOICE_MAP: Record<string, { lang: string, voice: string }> = {

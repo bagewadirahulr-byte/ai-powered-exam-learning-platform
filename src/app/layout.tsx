@@ -72,28 +72,28 @@ export default function RootLayout({
         {/* ClerkProvider wraps the entire app for auth context */}
         <ClerkProvider
           appearance={{
-            baseTheme: dark, // Match our dark theme
+            baseTheme: dark,
             variables: {
-              colorPrimary: "#3b82f6",       // Blue-500
-              colorBackground: "#111827",     // Gray-900
-              colorInputBackground: "#1f2937", // Gray-800
-              colorText: "#f9fafb",           // Gray-50
+              colorPrimary: "#3b82f6",         // Blue-500
+              colorBackground: "#0f172a",       // Slate-900 (Professional dark)
+              colorInputBackground: "#1e293b",   // Slate-800
+              colorText: "#ffffff",             // Strict bright white for all primary text
+              colorTextSecondary: "#94a3b8",    // Slate-400 for secondary text
+              colorTextOnPrimaryBackground: "#ffffff",
+              colorNeutral: "#ffffff",          // Fixes black text on some neutral elements
             },
             elements: {
-              // Style Clerk components to match our design
-              card: "bg-gray-900 border border-white/10 shadow-xl",
-              headerTitle: "text-white",
-              headerSubtitle: "text-gray-400",
-              formButtonPrimary:
-                "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700",
-              footerActionLink: "text-blue-400 hover:text-blue-300",
-              formFieldInput:
-                "bg-gray-800 border-gray-700 text-white placeholder:text-gray-500",
-              dividerLine: "bg-gray-700",
-              dividerText: "text-gray-500",
-              socialButtonsBlockButton:
-                "bg-gray-800 border-gray-700 text-white hover:bg-gray-700",
-              socialButtonsBlockButtonText: "text-white",
+              // Only override specific buttons, do NOT override 'card' as it breaks popover text
+              formButtonPrimary: "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium",
+              footerActionLink: "text-blue-400 hover:text-blue-300 font-medium",
+              socialButtonsBlockButton: "bg-slate-800 border-slate-700 text-white hover:bg-slate-700",
+              socialButtonsBlockButtonText: "text-white font-medium",
+              formFieldInput: "bg-slate-800 border-slate-700 text-white placeholder:text-slate-400",
+              // Force popover buttons to have white text
+              userButtonPopoverActionButtonText: "text-white font-medium",
+              userButtonPopoverActionButtonIcon: "text-slate-300",
+              userPreviewMainIdentifier: "text-white font-semibold",
+              userPreviewSecondaryIdentifier: "text-slate-400",
             },
           }}
         >
