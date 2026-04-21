@@ -1,19 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-
-// ============================================
-// Listen Button — Google Cloud TTS Backend
-// Robust Multilingual Audio Playback
-// ============================================
+import { Loader2, Volume2, Square, AlertCircle } from "lucide-react";
 
 type ListenButtonProps = {
   text: string;
-  language?: string; // key from SUPPORTED_LANGUAGES
+  language?: string;
   className?: string;
 };
 
-// Global cache for generated audio to avoid redundant API calls
+// Global cache for current session to avoid repeated API calls for same text
 const audioCache = new Map<string, string>();
 
 export default function ListenButton({
@@ -38,7 +34,7 @@ export default function ListenButton({
   }, []);
 
   const handleToggle = useCallback(async () => {
-    // If currently playing, stop it
+    // 1. If currently playing, stop it
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -50,58 +46,69 @@ export default function ListenButton({
     setError(null);
 
     try {
-      // Create a unique cache key based on language and text content
-      const cacheKey = `${language}-${text.substring(0, 50)}-${text.length}`;
+      // 2. Preprocess text (Strip markdown for cleaner speech)
+      const cleanText = text
+        .replace(/[*#_`~]/g, '') // Remove formatting symbols
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Keep link text, remove URL
+        .trim();
+
+      if (!cleanText) {
+        throw new Error("No readable text content");
+      }
+
+      // 3. Check Cache
+      const cacheKey = `${language}-${cleanText.substring(0, 40)}-${cleanText.length}`;
       let audioUrl = audioCache.get(cacheKey);
 
       if (!audioUrl) {
-        // Preprocess text: Strip out markdown formatting that TTS might read aloud
-        const cleanText = text.replace(/[*#_`]/g, '').trim();
-
-        console.log(`[TTS Frontend] Requesting audio for ${language}...`);
+        console.log(`[TTS Frontend] Fetching audio for: ${language}`);
+        
         const response = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: cleanText, language }),
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to generate audio");
-        }
-
         const data = await response.json();
 
-        if (data.fallbackUsed) {
-          console.warn("[TTS Frontend] Note: Fallback English voice was used.");
+        if (!response.ok) {
+          throw new Error(data.details || data.error || "Failed to generate audio");
         }
 
-        // Convert base64 to Blob URL for native playback
-        // Using fetch to convert base64 data URI to Blob is a clean, modern approach
-        const audioBlob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(r => r.blob());
-        audioUrl = URL.createObjectURL(audioBlob);
+        // 4. Convert Base64 to Blob URL
+        // Fetch is much more efficient than manual ArrayBuffer conversion for large base64 strings
+        const audioRes = await fetch(`data:audio/mpeg;base64,${data.audioContent}`);
+        const blob = await audioRes.blob();
+        audioUrl = URL.createObjectURL(blob);
         
-        // Cache the URL to prevent regenerating the exact same text
         audioCache.set(cacheKey, audioUrl);
       }
 
-      // Play the audio natively
+      // 5. Play Audio
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
 
-      audio.onended = () => setIsPlaying(false);
-      audio.onerror = () => {
-        console.error("[TTS Frontend] Audio playback error");
-        setError("Playback failed");
+      audio.onplay = () => {
+        setIsPlaying(true);
+        setIsLoading(false);
+      };
+
+      audio.onended = () => {
         setIsPlaying(false);
       };
 
-      await audio.play();
-      setIsPlaying(true);
+      audio.onerror = (e) => {
+        console.error("[TTS Frontend] Audio Playback Error:", e);
+        setError("Playback failed");
+        setIsPlaying(false);
+        setIsLoading(false);
+      };
 
-    } catch (err) {
-      console.error("[TTS Frontend] Error:", err);
-      setError("Audio unavailable");
-    } finally {
+      await audio.play();
+
+    } catch (err: any) {
+      console.error("[TTS Frontend] Process Error:", err.message);
+      setError(err.message || "Failed to load audio");
       setIsLoading(false);
     }
   }, [isPlaying, text, language]);
@@ -110,17 +117,34 @@ export default function ListenButton({
     <button
       onClick={handleToggle}
       disabled={isLoading}
-      className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+      className={`group relative inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 ${
         isPlaying
-          ? "border-purple-500/30 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20"
-          : error 
-          ? "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-          : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600 hover:text-white"
-      } ${isLoading ? "opacity-70 cursor-not-allowed" : ""} ${className}`}
-      aria-label={isPlaying ? "Stop narration" : "Listen to content"}
+          ? "border-purple-500/50 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
+          : error
+          ? "border-red-500/40 bg-red-500/10 text-red-400"
+          : "border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-500 hover:text-white"
+      } ${isLoading ? "cursor-wait opacity-80" : "cursor-pointer"} ${className}`}
+      title={error || (isPlaying ? "Stop audio" : "Listen to content")}
     >
-      {isLoading ? "⏳ Loading..." : isPlaying ? "⏹ Stop" : error ? "❌ Error" : "🔊 Listen"}
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : isPlaying ? (
+        <Square className="h-4 w-4 fill-current" />
+      ) : error ? (
+        <AlertCircle className="h-4 w-4" />
+      ) : (
+        <Volume2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
+      )}
+      
+      <span>
+        {isLoading ? "Generating..." : isPlaying ? "Stop" : error ? "Try Again" : "Listen"}
+      </span>
+
+      {error && (
+        <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-red-900 px-2 py-1 text-[10px] text-red-100 opacity-0 group-hover:opacity-100 transition-opacity">
+          {error}
+        </span>
+      )}
     </button>
   );
 }
-
