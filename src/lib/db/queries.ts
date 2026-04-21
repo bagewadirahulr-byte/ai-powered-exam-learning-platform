@@ -13,8 +13,10 @@ import {
   wellnessLogs,
   contentCache,
   errorReports,
+  verificationAuditLogs,
+  ewsCertificates,
 } from "./schema";
-import { eq, desc, or, and, sql, count } from "drizzle-orm";
+import { eq, desc, or, and, sql, count, gte } from "drizzle-orm";
 import { FREE_CREDITS } from "@/config/constants";
 
 // --- Types ---
@@ -189,7 +191,17 @@ export async function getContentById(id: string) {
 // --- Daily Credit System ---
 
 /**
- * Check and reset daily credits if a new day has started.
+ * Convert a Date to IST date string (YYYY-MM-DD).
+ * IST = UTC + 5:30
+ */
+function toISTDateString(date: Date): string {
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(date.getTime() + istOffsetMs);
+  return istDate.toISOString().split("T")[0];
+}
+
+/**
+ * Check and reset daily credits if a new IST day has started.
  * Returns the user's current daily credits after potential reset.
  */
 export async function checkAndResetDailyCredits(userId: string) {
@@ -200,6 +212,7 @@ export async function checkAndResetDailyCredits(userId: string) {
       ewsVerified: users.ewsVerified,
       ewsPending: users.ewsPending,
       ewsTempPassExpiry: users.ewsTempPassExpiry,
+      ewsStatus: users.ewsStatus,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -209,19 +222,16 @@ export async function checkAndResetDailyCredits(userId: string) {
 
   const now = new Date();
   const lastReset = new Date(user[0].lastCreditReset);
-  const isNewDay =
-    now.getUTCDate() !== lastReset.getUTCDate() ||
-    now.getUTCMonth() !== lastReset.getUTCMonth() ||
-    now.getUTCFullYear() !== lastReset.getUTCFullYear();
+
+  // IST-aware day comparison (midnight IST = 18:30 UTC previous day)
+  const isNewDay = toISTDateString(now) !== toISTDateString(lastReset);
 
   if (isNewDay) {
-    // Determine max credits: EWS verified = 50, General = 8
-    const isEwsActive =
-      user[0].ewsVerified ||
-      (user[0].ewsPending &&
-        user[0].ewsTempPassExpiry &&
-        new Date(user[0].ewsTempPassExpiry) > now);
-    const maxCredits = isEwsActive ? 50 : 8;
+    // Determine max credits: EWS approved = 50, Temp Pass = 10, General = 8
+    const isEwsApproved = user[0].ewsStatus === "approved" || user[0].ewsVerified;
+    const isTempPass = !isEwsApproved && user[0].ewsPending &&
+      user[0].ewsTempPassExpiry && new Date(user[0].ewsTempPassExpiry) > now;
+    const maxCredits = isEwsApproved ? 50 : isTempPass ? 10 : 8;
 
     await db
       .update(users)
@@ -235,16 +245,33 @@ export async function checkAndResetDailyCredits(userId: string) {
 }
 
 /**
- * Deduct one daily credit from a user. Returns false if no credits remain.
+ * Atomically deduct one daily credit from a user.
+ * Uses SQL WHERE guard to prevent race conditions on concurrent requests.
+ * Also logs the transaction in the credits table for audit trail.
+ * Returns false if no credits remain (row not updated).
  */
-export async function deductDailyCredit(userId: string): Promise<boolean> {
-  const currentCredits = await checkAndResetDailyCredits(userId);
-  if (currentCredits <= 0) return false;
+export async function deductDailyCredit(
+  userId: string,
+  reason: string = "AI content generation"
+): Promise<boolean> {
+  // First ensure reset has happened
+  await checkAndResetDailyCredits(userId);
 
-  await db
+  // Atomic: UPDATE users SET daily_credits = daily_credits - 1 WHERE id = ? AND daily_credits > 0
+  const result = await db
     .update(users)
-    .set({ dailyCredits: currentCredits - 1 })
-    .where(eq(users.id, userId));
+    .set({ dailyCredits: sql`${users.dailyCredits} - 1` })
+    .where(and(eq(users.id, userId), sql`${users.dailyCredits} > 0`))
+    .returning({ remaining: users.dailyCredits });
+
+  if (result.length === 0) return false; // No credits — atomic guard prevented overspend
+
+  // Log the transaction for audit
+  await db.insert(credits).values({
+    userId,
+    amount: -1,
+    reason: `Daily: ${reason}`,
+  });
 
   return true;
 }
@@ -459,4 +486,381 @@ export async function getStudyDates(userId: string): Promise<string[]> {
     .orderBy(desc(sql`DATE(${generatedContent.createdAt})`));
 
   return result.map((r) => r.studyDate);
+}
+
+// ============================================
+// VERIFICATION AUDIT LOGGING
+// ============================================
+
+/**
+ * Log every EWS verification decision for audit trail.
+ */
+export async function logVerificationAudit(data: {
+  userId: string;
+  action: "submitted" | "approved" | "rejected" | "needs_review" | "manual_approved" | "manual_rejected" | "reset";
+  adminEmail?: string | null;
+  confidenceScore?: number;
+  nameMatchScore?: number;
+  extractedIncome?: number | null;
+  decisionReason: string;
+}) {
+  await db.insert(verificationAuditLogs).values({
+    userId: data.userId,
+    adminEmail: data.adminEmail ?? null,
+    action: data.action,
+    confidenceScore: data.confidenceScore ?? null,
+    nameMatchScore: data.nameMatchScore ?? null,
+    extractedIncome: data.extractedIncome ?? null,
+    decisionReason: data.decisionReason,
+  });
+}
+
+/**
+ * Update EWS status with the new enum field + backward-compatible booleans.
+ */
+export async function setEwsStatusFull(
+  userId: string,
+  status: {
+    ewsStatus: "none" | "pending" | "approved" | "rejected" | "needs_review";
+    ewsRejectionReason?: string | null;
+  }
+) {
+  // Map new enum to legacy boolean fields for backward compatibility
+  const booleans = {
+    ewsVerified: status.ewsStatus === "approved",
+    ewsPending: status.ewsStatus === "pending" || status.ewsStatus === "needs_review",
+    ewsTempPassExpiry:
+      status.ewsStatus === "pending" || status.ewsStatus === "needs_review"
+        ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h temp pass
+        : null,
+  };
+
+  const updateData: any = {
+    ewsStatus: status.ewsStatus,
+    ...booleans,
+    updatedAt: new Date(),
+  };
+
+  if (status.ewsRejectionReason !== undefined) {
+    updateData.ewsRejectionReason = status.ewsRejectionReason;
+  }
+
+  // Set rejection cooldown timestamp
+  if (status.ewsStatus === "rejected") {
+    updateData.ewsLastRejectedAt = new Date();
+  }
+
+  await db.update(users).set(updateData).where(eq(users.id, userId));
+}
+
+/**
+ * Save OCR extraction results
+ */
+export async function setEwsOcrResults(
+  userId: string,
+  data: {
+    ewsVerificationFlag: "PENDING" | "AUTO_CLEAR" | "REVIEW_BLUR" | "REVIEW_NAME_MISMATCH" | "REVIEW_INCOME_EXCEEDED" | "REVIEW_INCOME_NOT_FOUND" | "REVIEW_INVALID_DOCUMENT" | "REVIEW_UNCERTAIN_DOCUMENT" | "REVIEW_EXPIRED_DOCUMENT" | "REVIEW_MULTIPLE_ISSUES";
+    ewsExtractedName: string | null;
+    ewsExtractedIncome: number | null;
+    ewsBlurScore: number | null;
+    ewsDocumentType?: string | null;
+    ewsRiskScore?: number | null;
+    ewsAiRecommendation?: string | null;
+    ewsIssueDate?: string | null;
+  }
+) {
+  await db.update(users).set(data).where(eq(users.id, userId));
+}
+
+/**
+ * Save certificate temporarily
+ */
+export async function saveEwsCertificate(userId: string, base64Data: string, mimeType: string, certificateHash?: string) {
+  await db
+    .insert(ewsCertificates)
+    .values({ userId, base64Data, mimeType, certificateHash: certificateHash ?? null })
+    .onConflictDoUpdate({
+      target: ewsCertificates.userId,
+      set: { base64Data, mimeType, certificateHash: certificateHash ?? null, createdAt: new Date() },
+    });
+}
+
+/**
+ * Fetch a user's uploaded certificate data for admin viewing
+ */
+export async function getEwsCertificate(userId: string) {
+  const result = await db
+    .select()
+    .from(ewsCertificates)
+    .where(eq(ewsCertificates.userId, userId))
+    .limit(1);
+    
+  return result[0] || null;
+}
+
+/**
+ * Delete a certificate after review
+ */
+export async function deleteEwsCertificate(userId: string) {
+  await db.delete(ewsCertificates).where(eq(ewsCertificates.userId, userId));
+}
+
+/**
+ * Increment EWS submission count and update timestamp.
+ */
+export async function incrementEwsSubmission(userId: string) {
+  await db
+    .update(users)
+    .set({
+      ewsSubmissionCount: sql`${users.ewsSubmissionCount} + 1`,
+      lastEwsSubmission: new Date(),
+    })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * Check if user has exceeded EWS submission rate limit (3 per 24h).
+ */
+export async function checkEwsRateLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
+  const user = await db
+    .select({
+      ewsSubmissionCount: users.ewsSubmissionCount,
+      lastEwsSubmission: users.lastEwsSubmission,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user[0]) return { allowed: false, remaining: 0 };
+
+  const now = new Date();
+  const lastSub = user[0].lastEwsSubmission;
+
+  // If last submission was more than 24h ago, reset counter
+  if (!lastSub || now.getTime() - new Date(lastSub).getTime() > 24 * 60 * 60 * 1000) {
+    await db
+      .update(users)
+      .set({ ewsSubmissionCount: 0 })
+      .where(eq(users.id, userId));
+    return { allowed: true, remaining: 3 };
+  }
+
+  const remaining = Math.max(0, 3 - user[0].ewsSubmissionCount);
+  return { allowed: remaining > 0, remaining };
+}
+
+// ============================================
+// ADMIN PANEL QUERIES
+// ============================================
+
+/**
+ * Get all users with their key stats for admin dashboard.
+ */
+export async function getAllUsersAdmin() {
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      subscriptionStatus: users.subscriptionStatus,
+      ewsStatus: users.ewsStatus,
+      ewsVerified: users.ewsVerified,
+      ewsRejectionReason: users.ewsRejectionReason,
+      ewsVerificationFlag: users.ewsVerificationFlag,
+      ewsExtractedName: users.ewsExtractedName,
+      ewsExtractedIncome: users.ewsExtractedIncome,
+      ewsBlurScore: users.ewsBlurScore,
+      ewsDocumentType: users.ewsDocumentType,
+      ewsRiskScore: users.ewsRiskScore,
+      ewsAiRecommendation: users.ewsAiRecommendation,
+      ewsIssueDate: users.ewsIssueDate,
+      dailyCredits: users.dailyCredits,
+      preferredLanguage: users.preferredLanguage,
+      targetExam: users.targetExam,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt));
+}
+
+/**
+ * Get platform-wide statistics for admin dashboard.
+ */
+export async function getPlatformStats() {
+  const [userCount] = await db.select({ total: count() }).from(users);
+  const [contentCount] = await db.select({ total: count() }).from(generatedContent);
+  const [ewsApproved] = await db
+    .select({ total: count() })
+    .from(users)
+    .where(eq(users.ewsStatus, "approved"));
+  const [ewsPending] = await db
+    .select({ total: count() })
+    .from(users)
+    .where(or(eq(users.ewsStatus, "pending"), eq(users.ewsStatus, "needs_review")));
+
+  // Content generated today (IST)
+  const todayIST = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const todayStart = new Date(todayIST.getTime() + istOffset);
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayStartUTC = new Date(todayStart.getTime() - istOffset);
+
+  const [todayContent] = await db
+    .select({ total: count() })
+    .from(generatedContent)
+    .where(gte(generatedContent.createdAt, todayStartUTC));
+
+  return {
+    totalUsers: userCount?.total || 0,
+    totalContent: contentCount?.total || 0,
+    ewsApproved: ewsApproved?.total || 0,
+    ewsPendingReview: ewsPending?.total || 0,
+    contentToday: todayContent?.total || 0,
+  };
+}
+
+/**
+ * Get all verification audit logs for admin review.
+ */
+export async function getVerificationAuditLogs() {
+  return db
+    .select({
+      id: verificationAuditLogs.id,
+      userId: verificationAuditLogs.userId,
+      adminEmail: verificationAuditLogs.adminEmail,
+      action: verificationAuditLogs.action,
+      confidenceScore: verificationAuditLogs.confidenceScore,
+      nameMatchScore: verificationAuditLogs.nameMatchScore,
+      extractedIncome: verificationAuditLogs.extractedIncome,
+      decisionReason: verificationAuditLogs.decisionReason,
+      createdAt: verificationAuditLogs.createdAt,
+      userName: users.name,
+      userEmail: users.email,
+      userFirstName: users.firstName,
+      userLastName: users.lastName,
+    })
+    .from(verificationAuditLogs)
+    .leftJoin(users, eq(verificationAuditLogs.userId, users.id))
+    .orderBy(desc(verificationAuditLogs.createdAt));
+}
+
+/**
+ * Get users pending EWS review (needs_review or pending status).
+ */
+export async function getPendingEwsReviews() {
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      ewsStatus: users.ewsStatus,
+      ewsVerificationFlag: users.ewsVerificationFlag,
+      ewsExtractedName: users.ewsExtractedName,
+      ewsExtractedIncome: users.ewsExtractedIncome,
+      ewsBlurScore: users.ewsBlurScore,
+      ewsDocumentType: users.ewsDocumentType,
+      ewsRiskScore: users.ewsRiskScore,
+      ewsAiRecommendation: users.ewsAiRecommendation,
+      ewsIssueDate: users.ewsIssueDate,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .where(or(eq(users.ewsStatus, "needs_review"), eq(users.ewsStatus, "pending")))
+    .orderBy(desc(users.updatedAt));
+}
+
+/**
+ * Get content generation stats grouped by type.
+ */
+export async function getContentStatsByType() {
+  return db
+    .select({
+      type: generatedContent.type,
+      total: count(),
+    })
+    .from(generatedContent)
+    .groupBy(generatedContent.type);
+}
+
+// ============================================
+// ADMIN CREDIT MANAGEMENT
+// ============================================
+
+/**
+ * Set a user's daily credits to a specific value.
+ */
+export async function setUserDailyCredits(userId: string, creditAmount: number) {
+  await db
+    .update(users)
+    .set({ dailyCredits: creditAmount, lastCreditReset: new Date() })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * Reset a user's credits based on their EWS status.
+ * Returns the new credit amount.
+ */
+export async function adminResetUserCredits(userId: string): Promise<number> {
+  const user = await db
+    .select({ ewsVerified: users.ewsVerified, ewsStatus: users.ewsStatus })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user[0]) throw new Error("User not found");
+
+  const maxCredits = (user[0].ewsVerified || user[0].ewsStatus === "approved") ? 50 : 8;
+
+  await db
+    .update(users)
+    .set({ dailyCredits: maxCredits, lastCreditReset: new Date() })
+    .where(eq(users.id, userId));
+
+  return maxCredits;
+}
+
+// ============================================
+// FRAUD PREVENTION QUERIES
+// ============================================
+
+/**
+ * Check if a certificate with the same SHA-256 hash exists for another user.
+ * Prevents cross-user document reuse.
+ */
+export async function checkDuplicateCertificate(hash: string, currentUserId: string): Promise<boolean> {
+  const existing = await db
+    .select({ userId: ewsCertificates.userId })
+    .from(ewsCertificates)
+    .where(and(
+      eq(ewsCertificates.certificateHash, hash),
+      sql`${ewsCertificates.userId} != ${currentUserId}`
+    ))
+    .limit(1);
+  return existing.length > 0;
+}
+
+/**
+ * Check if a user is within the 24-hour rejection cooldown.
+ * Users must wait 24h after rejection before resubmitting.
+ */
+export async function checkRejectionCooldown(userId: string): Promise<{ allowed: boolean; hoursRemaining: number }> {
+  const user = await db
+    .select({ ewsLastRejectedAt: users.ewsLastRejectedAt, ewsStatus: users.ewsStatus })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user[0] || user[0].ewsStatus !== "rejected" || !user[0].ewsLastRejectedAt) {
+    return { allowed: true, hoursRemaining: 0 };
+  }
+
+  const elapsed = Date.now() - new Date(user[0].ewsLastRejectedAt).getTime();
+  const cooldownMs = 24 * 60 * 60 * 1000;
+  if (elapsed >= cooldownMs) return { allowed: true, hoursRemaining: 0 };
+  return { allowed: false, hoursRemaining: Math.ceil((cooldownMs - elapsed) / (60 * 60 * 1000)) };
 }

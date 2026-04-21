@@ -47,6 +47,27 @@ export const targetExamEnum = pgEnum("target_exam", [
   "RRB_NTPC",
 ]);
 
+export const ewsStatusEnum = pgEnum("ews_status", [
+  "none",
+  "pending",
+  "approved",
+  "rejected",
+  "needs_review",
+]);
+
+export const verificationFlagEnum = pgEnum("verification_flag", [
+  "PENDING",
+  "AUTO_CLEAR",
+  "REVIEW_BLUR",
+  "REVIEW_NAME_MISMATCH",
+  "REVIEW_INCOME_EXCEEDED",
+  "REVIEW_INCOME_NOT_FOUND",
+  "REVIEW_INVALID_DOCUMENT",
+  "REVIEW_UNCERTAIN_DOCUMENT",
+  "REVIEW_EXPIRED_DOCUMENT",
+  "REVIEW_MULTIPLE_ISSUES"
+]);
+
 // --- Users Table ---
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -64,6 +85,26 @@ export const users = pgTable("users", {
   ewsVerified: boolean("ews_verified").default(false).notNull(),
   ewsPending: boolean("ews_pending").default(false).notNull(),
   ewsTempPassExpiry: timestamp("ews_temp_pass_expiry"),
+  ewsStatus: ewsStatusEnum("ews_status").default("none").notNull(),
+  ewsRejectionReason: text("ews_rejection_reason"),
+  ewsSubmissionCount: integer("ews_submission_count").default(0).notNull(),
+  lastEwsSubmission: timestamp("last_ews_submission"),
+  
+  // OCR Extraction Data
+  ewsVerificationFlag: verificationFlagEnum("ews_verification_flag"),
+  ewsExtractedName: text("ews_extracted_name"),
+  ewsExtractedIncome: integer("ews_extracted_income"),
+  ewsBlurScore: integer("ews_blur_score"),
+  ewsDocumentType: text("ews_document_type"), // VALID_EWS | UNCERTAIN | INVALID_DOCUMENT
+
+  // AI Decision Assistance
+  ewsRiskScore: integer("ews_risk_score"), // 0-100 computed risk
+  ewsAiRecommendation: text("ews_ai_recommendation"), // APPROVE | REVIEW | REJECT
+  ewsIssueDate: text("ews_issue_date"), // extracted certificate date
+
+  // Fraud Prevention
+  ewsCertificateHash: text("ews_certificate_hash"), // SHA-256 of uploaded doc
+  ewsLastRejectedAt: timestamp("ews_last_rejected_at"), // cooldown tracking
 
   // --- Daily Credit System ---
   dailyCredits: integer("daily_credits").default(8).notNull(),
@@ -156,5 +197,31 @@ export const errorReports = pgTable("error_reports", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// --- Verification Audit Logs (EWS Decision Trail) ---
+export const verificationAuditLogs = pgTable("verification_audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  adminEmail: text("admin_email"), // null for system actions, set for admin actions
+  action: text("action").notNull(), // submitted | approved | rejected | reset | needs_review
+  confidenceScore: integer("confidence_score"),
+  nameMatchScore: integer("name_match_score"), // 0-100
+  extractedIncome: integer("extracted_income"), // annual income in INR
+  decisionReason: text("decision_reason").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// --- EWS Certificates Storage (Temporary until approved/rejected) ---
+export const ewsCertificates = pgTable("ews_certificates", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  base64Data: text("base64_data").notNull(),
+  mimeType: text("mime_type").notNull(),
+  certificateHash: text("certificate_hash"), // SHA-256 for duplicate detection
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

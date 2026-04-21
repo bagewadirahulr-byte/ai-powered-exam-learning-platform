@@ -4,6 +4,7 @@ import { useState } from "react";
 import { generateContent } from "./actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import CreditExhaustedModal from "@/components/ui/CreditExhaustedModal";
 
 type ContentType = "notes" | "quiz" | "flashcards" | "qna";
 
@@ -14,6 +15,7 @@ export default function GeneratePage() {
   const [topicMode, setTopicMode] = useState<"exam" | "general">("exam");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPaywall, setShowPaywall] = useState(false);
   const router = useRouter();
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -31,11 +33,15 @@ export default function GeneratePage() {
       const res = await generateContent(formData);
       
       if (res.success && res.contentId) {
-        // Redirect directly to the newly generated content!
         router.push(`/dashboard/content/${res.contentId}`);
       } else {
-        // Handle cases where success is false but no error was thrown
-        setError(res.message || "Failed to generate study material.");
+        const msg = res.message || "Failed to generate study material.";
+        // Detect credit exhaustion to show paywall modal
+        if (msg.toLowerCase().includes("credit") && (msg.toLowerCase().includes("exhausted") || msg.toLowerCase().includes("insufficient") || msg.toLowerCase().includes("no daily credits"))) {
+          setShowPaywall(true);
+        } else {
+          setError(msg);
+        }
         setLoading(false);
       }
     } catch (error) {
@@ -47,6 +53,12 @@ export default function GeneratePage() {
 
   return (
     <div className="relative min-h-[calc(100vh-80px)] mt-[80px] flex flex-col items-center justify-center px-6 py-12">
+      {/* Credit Exhausted Paywall */}
+      <CreditExhaustedModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        isEwsVerified={false}
+      />
       {/* Immersive Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-950/80 backdrop-blur-md transition-all duration-500 animate-in fade-in">

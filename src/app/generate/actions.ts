@@ -184,8 +184,8 @@ export async function generateContent(formData: FormData) {
     });
 
     if (user.subscriptionStatus === "free") {
-      await deductDailyCredit(user.id);
-      if (creditCost === 2) await deductDailyCredit(user.id); // Deduct 2nd credit
+      await deductDailyCredit(user.id, `Cached ${type}: ${topic}`);
+      if (creditCost === 2) await deductDailyCredit(user.id, `Cached ${type}: ${topic} (general topic extra)`);
     } else if (user.subscriptionStatus !== "annual") {
       await deductCredits(user.id, creditCost, `Generated ${type}: ${topic} (cached, ${topicMode})`);
     }
@@ -255,8 +255,8 @@ export async function generateContent(formData: FormData) {
 
     // --- 11. Deduct Credits ---
     if (user.subscriptionStatus === "free") {
-      await deductDailyCredit(user.id);
-      if (creditCost === 2) await deductDailyCredit(user.id); // Deduct 2nd credit
+      await deductDailyCredit(user.id, `Generated ${type}: ${topic}`);
+      if (creditCost === 2) await deductDailyCredit(user.id, `Generated ${type}: ${topic} (general topic extra)`);
     } else if (user.subscriptionStatus !== "annual") {
       await deductCredits(user.id, creditCost, `Generated ${type}: ${topic} (${topicMode})`);
     }

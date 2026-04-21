@@ -70,6 +70,8 @@ export default async function SettingsPage() {
               ewsVerified: dbUser.ewsVerified,
               ewsPending: dbUser.ewsPending,
               ewsTempPassExpiry: dbUser.ewsTempPassExpiry,
+              ewsStatus: dbUser.ewsStatus,
+              ewsRejectionReason: dbUser.ewsRejectionReason,
               dailyCredits: dbUser.dailyCredits,
             }}
           />

@@ -4,7 +4,7 @@
 
 import { getContentById, getUserByClerkId, getErrorReportCount } from "@/lib/db/queries";
 import { ChevronLeft } from "lucide-react";
-import PDFDownload from "@/components/ui/PDFDownload";
+import PrintablePDF from "@/components/ui/PrintablePDF";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -118,7 +118,7 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
             
             {/* PDF Download Button for all types */}
             {data && (
-              <PDFDownload 
+              <PrintablePDF 
                 title={topic} 
                 type={type as "notes" | "quiz" | "flashcards" | "qna"}
                 data={data} 

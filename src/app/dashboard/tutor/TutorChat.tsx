@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { sendTutorMessage, type ChatMessage } from "./actions";
 import Link from "next/link";
-import { ChevronLeft, Send, Loader2, Bot, User } from "lucide-react";
+import { ChevronLeft, Send, Bot, User } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 
 // ============================================
@@ -148,8 +148,12 @@ export default function TutorChat() {
                   <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
                     <Bot className="w-5 h-5" />
                   </div>
-                  <div className="bg-gray-800 border-gray-700 border rounded-2xl rounded-tl-none px-5 py-3.5 shadow-sm">
-                    <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                  <div className="bg-gray-800 border-gray-700 border rounded-2xl rounded-tl-none px-5 py-4 shadow-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
                   </div>
                 </div>
               )}

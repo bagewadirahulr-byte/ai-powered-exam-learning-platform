@@ -18,6 +18,8 @@ type UserData = {
   ewsVerified: boolean;
   ewsPending: boolean;
   ewsTempPassExpiry: Date | null;
+  ewsStatus: string;
+  ewsRejectionReason: string | null;
   dailyCredits: number;
 };
 
@@ -58,24 +60,39 @@ export default function SettingsForm({ user }: { user: UserData }) {
     setVerifying(false);
   };
 
-  // Determine EWS status display
   const getEwsStatusBadge = () => {
-    if (user.ewsVerified) {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400 border border-green-500/20">
-          ✅ Verified EWS Student
-        </span>
-      );
+    const status = user.ewsStatus || (user.ewsVerified ? "approved" : user.ewsPending ? "pending" : "none");
+    switch (status) {
+      case "approved":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400 border border-green-500/20">
+            ✅ Verified EWS Student
+          </span>
+        );
+      case "needs_review":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-400 border border-amber-500/20">
+            🔍 Needs Admin Review
+          </span>
+        );
+      case "pending":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-500/10 px-3 py-1 text-sm font-medium text-yellow-400 border border-yellow-500/20">
+            ⏳ Pending (Temp Pass Active)
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-sm font-medium text-red-400 border border-red-500/20">
+            ❌ Rejected
+          </span>
+        );
+      default:
+        return null;
     }
-    if (user.ewsPending && user.ewsTempPassExpiry && new Date(user.ewsTempPassExpiry) > new Date()) {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-500/10 px-3 py-1 text-sm font-medium text-yellow-400 border border-yellow-500/20">
-          ⏳ Temporary Pass Active (24h)
-        </span>
-      );
-    }
-    return null;
   };
+
+  const ewsStatus = user.ewsStatus || (user.ewsVerified ? "approved" : "none");
 
   return (
     <div className="space-y-8">
@@ -191,7 +208,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
           Upload your government-issued EWS or Income certificate for instant AI-powered verification.
         </p>
 
-        {user.ewsVerified ? (
+        {ewsStatus === "approved" ? (
           <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
             <p className="text-green-300 text-sm">
               🎉 Your EWS status is <strong>verified</strong>. You have access to 50 daily AI credits.
@@ -200,6 +217,22 @@ export default function SettingsForm({ user }: { user: UserData }) {
           </div>
         ) : (
           <>
+            {ewsStatus === "rejected" && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 mb-4">
+                <p className="text-red-300 text-sm">
+                  ❌ Your EWS verification was rejected.
+                  {user.ewsRejectionReason && (
+                    <span className="block mt-1 text-red-400/80">
+                      Reason: {user.ewsRejectionReason}
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-red-400/60 mt-2">
+                  You can re-upload a clearer certificate (3 attempts per 24 hours).
+                </p>
+              </div>
+            )}
+            
             {/* Student Type Toggle */}
             <div className="mb-6 flex gap-3">
               <button
@@ -289,7 +322,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
       <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 sm:p-8 backdrop-blur-xl">
         <h2 className="mb-1 text-xl font-bold text-white">Daily AI Credits</h2>
         <p className="mb-4 text-sm text-gray-400">
-          Your credits reset automatically at midnight UTC every day.
+          Your credits reset automatically at midnight IST (12:00 AM India Standard Time) every day.
         </p>
         <div className="flex items-baseline gap-2">
           <span className="text-4xl font-bold text-green-400">{user.dailyCredits}</span>
