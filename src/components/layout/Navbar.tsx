@@ -6,14 +6,22 @@
 "use client";
 
 import Link from "next/link";
-import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { useAuth } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, UserButton, useAuth, useUser } from "@clerk/nextjs";
 import Button from "@/components/ui/Button";
 import { APP_NAME } from "@/config/constants";
+
+const ADMIN_EMAILS = [
+  "bagewadirahulr@gmail.com",
+];
 
 export default function Navbar() {
   // --- Get auth state (client-side) ---
   const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
+
+  const isAdmin = user?.emailAddresses?.some(e => 
+    ADMIN_EMAILS.includes(e.emailAddress.toLowerCase())
+  );
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-gray-950/80 backdrop-blur-xl">
@@ -60,8 +68,15 @@ export default function Navbar() {
             // Loading skeleton while Clerk initializes
             <div className="h-9 w-24 animate-pulse rounded-xl bg-gray-800" />
           ) : isSignedIn ? (
-            // Signed in: show Dashboard link + UserButton
+            // Signed in: show Admin Panel (if admin) + Dashboard link + UserButton
             <>
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10">
+                    🛡️ Admin Panel
+                  </Button>
+                </Link>
+              )}
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm">
                   Dashboard
