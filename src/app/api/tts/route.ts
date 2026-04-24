@@ -1,114 +1,112 @@
 import { NextResponse } from 'next/server';
-import { EdgeTTS } from 'node-edge-tts';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
-import * as os from 'os';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Precise Voice Mapping as per requirements
-const VOICE_MAP: Record<string, { lang: string, voice: string }> = {
-  english: { lang: 'en-IN', voice: 'en-IN-NeerjaNeural' },
-  hindi: { lang: 'hi-IN', voice: 'hi-IN-SwaraNeural' }, 
-  urdu: { lang: 'ur-IN', voice: 'ur-IN-GulNeural' }, 
-  kannada: { lang: 'kn-IN', voice: 'kn-IN-GaganNeural' },
-  tamil: { lang: 'ta-IN', voice: 'ta-IN-PallaviNeural' },
-  telugu: { lang: 'te-IN', voice: 'te-IN-ShrutiNeural' },
-  malayalam: { lang: 'ml-IN', voice: 'ml-IN-SobhanaNeural' },
-};
+// We use the specific TTS preview model as requested for audio generation
+const TTS_MODEL = 'gemini-3.1-flash-tts-preview';
 
-// Helper to chunk long text to prevent Edge TTS Websocket timeouts
-function chunkText(text: string, maxLength: number): string[] {
-  const chunks: string[] = [];
-  let start = 0;
-  while (start < text.length) {
-    let end = start + maxLength;
-    if (end >= text.length) {
-      chunks.push(text.slice(start).trim());
-      break;
-    }
-    // Try to find a good breaking point
-    let breakPoint = text.lastIndexOf('\n', end);
-    if (breakPoint <= start) breakPoint = text.lastIndexOf('.', end);
-    if (breakPoint <= start) breakPoint = text.lastIndexOf(' ', end);
-    // Force break if no good point found
-    if (breakPoint <= start) breakPoint = end;
-    
-    chunks.push(text.slice(start, breakPoint + 1).trim());
-    start = breakPoint + 1;
-  }
-  return chunks.filter(c => c.length > 0);
+// Maximum text length to prevent excessively long audio generation
+const MAX_TEXT_LENGTH = 10_000;
+
+/**
+ * Creates a standard WAV header for raw PCM audio.
+ */
+function createWavHeader(dataLength: number, sampleRate: number, numChannels: number, bitsPerSample: number): Buffer {
+  const buffer = Buffer.alloc(44);
+  
+  // "RIFF"
+  buffer.write('RIFF', 0);
+  // file length - 8
+  buffer.writeUInt32LE(36 + dataLength, 4);
+  // "WAVE"
+  buffer.write('WAVE', 8);
+  // "fmt " chunk
+  buffer.write('fmt ', 12);
+  // fmt chunk length (16)
+  buffer.writeUInt32LE(16, 16);
+  // format (1 = PCM)
+  buffer.writeUInt16LE(1, 20);
+  // channels
+  buffer.writeUInt16LE(numChannels, 22);
+  // sample rate
+  buffer.writeUInt32LE(sampleRate, 24);
+  // byte rate (sampleRate * channels * bytesPerSample)
+  buffer.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28);
+  // block align (channels * bytesPerSample)
+  buffer.writeUInt16LE(numChannels * (bitsPerSample / 8), 32);
+  // bits per sample
+  buffer.writeUInt16LE(bitsPerSample, 34);
+  // "data" chunk
+  buffer.write('data', 36);
+  // data length
+  buffer.writeUInt32LE(dataLength, 40);
+  
+  return buffer;
 }
 
 export async function POST(req: Request) {
-  const requestId = crypto.randomUUID().substring(0, 8);
-  
   try {
-    const { text, language } = await req.json();
+    const body = await req.json();
+    const { text, language } = body;
 
-    if (!text || text.trim().length === 0) {
-      return NextResponse.json({ error: "Text content is empty" }, { status: 400 });
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return NextResponse.json({ error: 'Text content is required' }, { status: 400 });
     }
 
-    const normalizedLang = (language || "english").toLowerCase();
-    const voiceConfig = VOICE_MAP[normalizedLang] || VOICE_MAP['english'];
-    
-    console.log(`[TTS API][${requestId}] Request: lang=${normalizedLang}, textLength=${text.length}`);
+    if (text.length > MAX_TEXT_LENGTH) {
+      return NextResponse.json({ error: `Text too long. Max ${MAX_TEXT_LENGTH} chars.` }, { status: 400 });
+    }
 
-    const chunks = chunkText(text, 1500); // Edge TTS starts timing out around 2000-3000 chars
-    console.log(`[TTS API][${requestId}] Processing ${chunks.length} chunks...`);
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    const model = genAI.getGenerativeModel({ model: TTS_MODEL });
 
-    const audioBuffers: Buffer[] = [];
+    console.log(`[TTS] Requesting Gemini TTS for language: ${language}, text length: ${text.length}`);
 
-    // Process chunks sequentially to respect rate limits and memory
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const tmpFilePath = path.join(os.tmpdir(), `tts-${requestId}-chunk-${i}.mp3`);
-      
-      try {
-        const tts = new EdgeTTS({
-          voice: voiceConfig.voice,
-          lang: voiceConfig.lang,
-          outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
-        });
-
-        await tts.ttsPromise(chunk, tmpFilePath);
-
-        if (fs.existsSync(tmpFilePath)) {
-          audioBuffers.push(fs.readFileSync(tmpFilePath));
-          fs.unlinkSync(tmpFilePath);
-        } else {
-          throw new Error("Temporary file was not created by the TTS engine.");
+    // Just pass the raw text. Gemini TTS will figure out the language from the text content.
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: text }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: 'Aoede', // Clear, versatile prebuilt voice
+            }
+          }
         }
-      } catch (err: any) {
-        console.error(`[TTS API][${requestId}] Error on chunk ${i}:`, err);
-        // Clean up on failure
-        if (fs.existsSync(tmpFilePath)) fs.unlinkSync(tmpFilePath);
-        
-        // Rethrow proper error string or message
-        throw new Error(typeof err === 'string' ? err : (err.message || "Unknown Error"));
-      }
+      } as any // Bypass TS error for new features
+    });
+
+    const response = result.response;
+    const audioPart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+    if (!audioPart || !audioPart.inlineData) {
+      console.error("[TTS] No audio returned from Gemini. Parts:", JSON.stringify(response.candidates?.[0]?.content?.parts));
+      return NextResponse.json({ error: 'Failed to generate audio from AI.' }, { status: 500 });
     }
 
-    if (audioBuffers.length === 0) {
-      throw new Error("Failed to generate audio content across all chunks.");
-    }
+    const pcmBuffer = Buffer.from(audioPart.inlineData.data, 'base64');
+    
+    // Gemini 3.1 TTS preview returns 24000Hz 16-bit mono PCM by default (audio/l16; rate=24000; channels=1)
+    const wavHeader = createWavHeader(pcmBuffer.length, 24000, 1, 16);
+    const finalBuffer = Buffer.concat([wavHeader, pcmBuffer]);
 
-    // Combine all MP3 buffers into a single continuous file
-    const finalBuffer = Buffer.concat(audioBuffers);
-    console.log(`[TTS API][${requestId}] Success: Combined ${audioBuffers.length} chunks, ${finalBuffer.length} bytes`);
+    console.log(`[TTS] Successfully generated ${finalBuffer.length} bytes of WAV audio.`);
 
-    return NextResponse.json({
-      audioContent: finalBuffer.toString('base64'),
-      voice: voiceConfig.voice,
-      format: 'mp3',
-      chunksProcessed: chunks.length
+    return new NextResponse(finalBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'audio/wav',
+        'Content-Length': finalBuffer.length.toString(),
+        'Cache-Control': 'public, max-age=3600',
+        'X-TTS-Source': 'gemini-3.1-flash-tts',
+      },
     });
 
   } catch (error: any) {
-    console.error(`[TTS API][${requestId}] Failure:`, error);
-    return NextResponse.json({ 
-      error: "TTS Generation Failed", 
-      details: typeof error === 'string' ? error : error.message 
-    }, { status: 500 });
+    console.error('[TTS] Error:', error);
+    return NextResponse.json(
+      { error: 'TTS Generation Failed', details: error.message || String(error) },
+      { status: 500 }
+    );
   }
 }

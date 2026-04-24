@@ -154,9 +154,11 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
               isBookmarked={isBookmarked}
               contentType={type}
               contentText={
-                // Extract plain text for TTS
+                // Extract plain text for TTS — covers all content types
                 type === "notes"
                   ? (data.sections?.map((s) => `${s.heading}. ${s.content}`).join(". ") || topic)
+                  : type === "quiz"
+                  ? (data.questions?.map((q, i) => `Question ${i + 1}: ${q.question}. Answer: ${q.correctAnswer}. ${q.explanation}`).join(". ") || topic)
                   : type === "qna"
                   ? (data.pairs?.map((p) => `Question: ${p.question}. Answer: ${p.answer}`).join(". ") || topic)
                   : type === "flashcards"
