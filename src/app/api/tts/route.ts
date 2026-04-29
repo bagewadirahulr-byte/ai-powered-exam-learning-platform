@@ -1,123 +1,171 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI, GenerationConfig } from '@google/generative-ai';
-
-interface ExtendedGenerationConfig extends GenerationConfig {
-  responseModalities?: string[];
-  speechConfig?: {
-    voiceConfig?: {
-      prebuiltVoiceConfig?: {
-        voiceName?: string;
-      };
-    };
-  };
-}
 
 // ============================================
-// Gemini TTS Route — Audio Generation Engine
-// Uses the SAME Gemini API as content generation
-// Retry logic with model fallback chain
+// Gemini TTS Route — Direct REST API
+// Uses Gemini's native audio generation (FREE tier)
+// Supports: English, Hindi, Kannada, Tamil, Telugu, Malayalam, Urdu
 // ============================================
 
-// Gemini models that support TTS via responseModalities: ['AUDIO']
-// Strictly using free-tier models (Flash series) to prevent billing costs
-const TTS_MODEL_CHAIN = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+// Model chain — try dedicated TTS model first, then general flash model
+const TTS_MODEL_CHAIN = [
+  'gemini-2.5-flash-preview-tts',
+  'gemini-2.0-flash',
+];
 
-const MAX_TEXT_LENGTH = 10_000;
+const MAX_TEXT_LENGTH = 8_000;
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1500;
 
-// Language-to-voice mapping for best multilingual TTS quality
-// These are Gemini's prebuilt neural voices
-const VOICE_MAP: Record<string, string> = {
-  english: 'Kore',
-  hindi: 'Kore',
-  kannada: 'Kore',
-  tamil: 'Kore',
-  telugu: 'Kore',
-  malayalam: 'Kore',
-  urdu: 'Kore',
+// Supported languages
+const ALLOWED_LANGUAGES = [
+  'english', 'kannada', 'hindi', 'urdu', 'tamil', 'telugu', 'malayalam',
+];
+
+// Language display names for the prompt instruction
+const LANGUAGE_NAMES: Record<string, string> = {
+  english: 'English',
+  hindi: 'Hindi (हिन्दी)',
+  kannada: 'Kannada (ಕನ್ನಡ)',
+  tamil: 'Tamil (தமிழ்)',
+  telugu: 'Telugu (తెలుగు)',
+  malayalam: 'Malayalam (മലയാളം)',
+  urdu: 'Urdu (اردو)',
 };
 
+// Gemini prebuilt voice — Kore works well across languages
+const VOICE_NAME = 'Kore';
+
 /**
- * Helper: delays execution (exponential backoff).
+ * Helper: exponential backoff delay.
  */
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
- * Helper: checks if an error is a retryable API error (503/429).
+ * Helper: check if error is retryable (503/429).
  */
-function isRetryableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    return (
-      msg.includes('503') ||
-      msg.includes('429') ||
-      msg.includes('service unavailable') ||
-      msg.includes('resource exhausted') ||
-      msg.includes('high demand') ||
-      msg.includes('overloaded')
-    );
-  }
-  return false;
+function isRetryable(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes('503') ||
+    lower.includes('429') ||
+    lower.includes('service unavailable') ||
+    lower.includes('resource exhausted') ||
+    lower.includes('overloaded') ||
+    lower.includes('quota')
+  );
 }
 
 /**
- * Helper: checks if a model might not exist (404 error).
+ * Helper: check if model not found (404).
  */
-function isNotFoundError(error: unknown): boolean {
-  if (error instanceof Error) {
-    return error.message.includes('404 Not Found') || error.message.includes('is not found for API version');
-  }
-  return false;
+function isNotFound(msg: string): boolean {
+  return msg.includes('404') || msg.includes('not found') || msg.includes('not supported');
 }
 
 /**
- * Creates a standard WAV header for raw PCM audio.
+ * Creates a WAV header for raw PCM audio data.
  */
 function createWavHeader(dataLength: number, sampleRate: number, numChannels: number, bitsPerSample: number): Buffer {
   const buffer = Buffer.alloc(44);
-
-  // "RIFF"
   buffer.write('RIFF', 0);
-  // file length - 8
   buffer.writeUInt32LE(36 + dataLength, 4);
-  // "WAVE"
   buffer.write('WAVE', 8);
-  // "fmt " chunk
   buffer.write('fmt ', 12);
-  // fmt chunk length (16)
   buffer.writeUInt32LE(16, 16);
-  // format (1 = PCM)
-  buffer.writeUInt16LE(1, 20);
-  // channels
+  buffer.writeUInt16LE(1, 20); // PCM
   buffer.writeUInt16LE(numChannels, 22);
-  // sample rate
   buffer.writeUInt32LE(sampleRate, 24);
-  // byte rate (sampleRate * channels * bytesPerSample)
   buffer.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28);
-  // block align (channels * bytesPerSample)
   buffer.writeUInt16LE(numChannels * (bitsPerSample / 8), 32);
-  // bits per sample
   buffer.writeUInt16LE(bitsPerSample, 34);
-  // "data" chunk
   buffer.write('data', 36);
-  // data length
   buffer.writeUInt32LE(dataLength, 40);
-
   return buffer;
 }
 
-const ALLOWED_LANGUAGES = [
-  'english',
-  'kannada',
-  'hindi',
-  'urdu',
-  'tamil',
-  'telugu',
-  'malayalam'
-];
+/**
+ * Call Gemini REST API directly for TTS audio generation.
+ * Bypasses the SDK to ensure responseModalities and speechConfig are sent correctly.
+ */
+async function callGeminiTTS(
+  apiKey: string,
+  modelName: string,
+  text: string,
+  language: string
+): Promise<{ audioBuffer: Buffer; mimeType: string }> {
+  const langName = LANGUAGE_NAMES[language] || 'English';
+
+  // Build the prompt — instruct the model to read in the target language
+  const prompt = language === 'english'
+    ? text
+    : `Read the following text aloud clearly in ${langName}:\n\n${text}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+  const body = {
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      responseModalities: ['AUDIO'],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: VOICE_NAME,
+          },
+        },
+      },
+    },
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini API ${response.status}: ${errText.slice(0, 300)}`);
+  }
+
+  const data = await response.json();
+
+  // Extract audio from the response
+  const candidate = data.candidates?.[0];
+  if (!candidate?.content?.parts) {
+    throw new Error('No content in Gemini response');
+  }
+
+  const audioPart = candidate.content.parts.find(
+    (p: { inlineData?: { data: string; mimeType: string } }) => p.inlineData
+  );
+
+  if (!audioPart?.inlineData) {
+    // Check if response has text instead of audio (model doesn't support audio)
+    const textPart = candidate.content.parts.find(
+      (p: { text?: string }) => p.text
+    );
+    if (textPart) {
+      throw new Error('Model returned text instead of audio — not supported for TTS');
+    }
+    throw new Error('No audio data in Gemini response');
+  }
+
+  const audioBuffer = Buffer.from(audioPart.inlineData.data, 'base64');
+  const mimeType = audioPart.inlineData.mimeType || 'audio/pcm';
+
+  if (audioBuffer.length < 100) {
+    throw new Error('Audio response too small');
+  }
+
+  return { audioBuffer, mimeType };
+}
 
 export async function POST(req: Request) {
   try {
@@ -126,13 +174,13 @@ export async function POST(req: Request) {
 
     const requestedLang = (language || 'english').toLowerCase();
 
-    // STRICT LANGUAGE ENFORCEMENT
+    // Language validation
     if (!ALLOWED_LANGUAGES.includes(requestedLang)) {
       return NextResponse.json(
-        { 
+        {
           error: 'Unsupported language for audio generation.',
-          details: `Audio is strictly limited to: ${ALLOWED_LANGUAGES.join(', ')}. Received: ${language}`
-        }, 
+          details: `Supported: ${ALLOWED_LANGUAGES.join(', ')}. Received: "${language}"`,
+        },
         { status: 400 }
       );
     }
@@ -145,65 +193,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Text too long. Max ${MAX_TEXT_LENGTH} chars.` }, { status: 400 });
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const voiceName = VOICE_MAP[requestedLang] || 'Kore';
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
+    }
 
-    let lastError: unknown = null;
+    let lastError: string = '';
 
-    // Try each model in the chain with retry logic (same pattern as content generation)
+    // Try each model in the chain with retry logic
     for (const modelName of TTS_MODEL_CHAIN) {
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
-          console.log(`[TTS] Trying ${modelName} (attempt ${attempt + 1}), lang: ${language}, voice: ${voiceName}, text: ${text.length} chars`);
+          console.log(`[TTS] Trying ${modelName} (attempt ${attempt + 1}), lang: ${requestedLang}, text: ${text.length} chars`);
 
-          const model = genAI.getGenerativeModel({ model: modelName });
+          const { audioBuffer, mimeType } = await callGeminiTTS(apiKey, modelName, text, requestedLang);
 
-          const result = await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: text }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: {
-                    voiceName: voiceName,
-                  },
-                },
-              },
-            } as ExtendedGenerationConfig, // Bypass TS strictness for newer API features
-          });
+          console.log(`[TTS] ✅ Success with ${modelName}: ${audioBuffer.length} bytes, mimeType: ${mimeType}`);
 
-          const response = result.response;
-          const audioPart = response.candidates?.[0]?.content?.parts?.find(
-            (p: { inlineData?: { data: string; mimeType: string } }) => p.inlineData
-          );
-
-          if (!audioPart || !audioPart.inlineData) {
-            console.error(`[TTS] No audio returned from ${modelName}. Parts:`, JSON.stringify(response.candidates?.[0]?.content?.parts));
-            throw new Error('No audio data in Gemini response');
-          }
-
-          const { data, mimeType } = audioPart.inlineData;
-          const audioBuffer = Buffer.from(data, 'base64');
-
-          console.log(`[TTS] Got ${audioBuffer.length} bytes, mimeType: ${mimeType}`);
-
-          // If Gemini returns a complete audio format (wav, mp3, ogg), serve directly
-          if (mimeType && (mimeType.includes('wav') || mimeType.includes('mp3') || mimeType.includes('mpeg') || mimeType.includes('ogg'))) {
-            console.log(`[TTS] Serving complete ${mimeType} audio (${audioBuffer.length} bytes)`);
-            return new NextResponse(audioBuffer, {
+          // If the response is already a playable format, serve directly
+          if (mimeType.includes('wav') || mimeType.includes('mp3') || mimeType.includes('mpeg') || mimeType.includes('ogg')) {
+            return new NextResponse(new Uint8Array(audioBuffer), {
               status: 200,
               headers: {
                 'Content-Type': mimeType,
                 'Content-Length': audioBuffer.length.toString(),
                 'Cache-Control': 'public, max-age=3600',
-                'X-TTS-Source': `gemini-${modelName}`,
+                'X-TTS-Model': modelName,
+                'X-TTS-Language': requestedLang,
               },
             });
           }
 
-          // Raw PCM — parse sample rate from mimeType if available
-          // e.g., "audio/pcm;rate=24000" or "audio/L16;rate=24000;channels=1"
-          let sampleRate = 24000; // Gemini default
+          // Raw PCM — wrap in WAV header for browser playback
+          let sampleRate = 24000;
           let channels = 1;
           const bitsPerSample = 16;
 
@@ -214,52 +236,62 @@ export async function POST(req: Request) {
             if (channelMatch) channels = parseInt(channelMatch[1]);
           }
 
-          // Wrap raw PCM in a WAV header so browsers can play it
           const wavHeader = createWavHeader(audioBuffer.length, sampleRate, channels, bitsPerSample);
           const finalBuffer = Buffer.concat([wavHeader, audioBuffer]);
 
-          console.log(`[TTS] Serving WAV audio: ${finalBuffer.length} bytes (${sampleRate}Hz, ${channels}ch, ${bitsPerSample}bit)`);
+          console.log(`[TTS] Serving WAV: ${finalBuffer.length} bytes (${sampleRate}Hz, ${channels}ch)`);
 
-          return new NextResponse(finalBuffer, {
+          return new NextResponse(new Uint8Array(finalBuffer), {
             status: 200,
             headers: {
               'Content-Type': 'audio/wav',
               'Content-Length': finalBuffer.length.toString(),
               'Cache-Control': 'public, max-age=3600',
-              'X-TTS-Source': `gemini-${modelName}`,
+              'X-TTS-Model': modelName,
+              'X-TTS-Language': requestedLang,
             },
           });
 
         } catch (error) {
-          lastError = error;
+          const msg = error instanceof Error ? error.message : String(error);
+          lastError = msg;
 
-          if (isRetryableError(error) && attempt < MAX_RETRIES) {
+          // Retryable error (429/503) — backoff and retry
+          if (isRetryable(msg) && attempt < MAX_RETRIES) {
             const delay = BASE_DELAY_MS * Math.pow(2, attempt);
             console.warn(`[TTS] ${modelName} retryable error. Retrying in ${delay}ms...`);
             await sleep(delay);
             continue;
           }
 
-          if (isRetryableError(error) || isNotFoundError(error)) {
-            console.warn(`[TTS] ${modelName} exhausted retries or not found. Trying next model...`);
-            break; // Try next model in chain
+          // Model not found or doesn't support audio — skip to next model
+          if (isNotFound(msg) || msg.includes('not supported')) {
+            console.warn(`[TTS] ${modelName} not available for TTS. Trying next model...`);
+            break;
           }
 
-          throw error; // Non-retryable error — throw immediately
+          // Retryable but exhausted retries — try next model
+          if (isRetryable(msg)) {
+            console.warn(`[TTS] ${modelName} exhausted retries. Trying next model...`);
+            break;
+          }
+
+          // Non-retryable error — try next model
+          console.error(`[TTS] ${modelName} error: ${msg}`);
+          break;
         }
       }
     }
 
     // All models failed
-    const errorMsg = lastError instanceof Error ? lastError.message : String(lastError);
-    console.error(`[TTS] All models failed. Last error: ${errorMsg}`);
+    console.error(`[TTS] ❌ All models failed. Last error: ${lastError}`);
     return NextResponse.json(
-      { error: 'TTS generation failed. AI service temporarily unavailable.', details: errorMsg },
+      { error: 'Audio generation failed. Please try again.', details: lastError },
       { status: 500 }
     );
 
   } catch (error: unknown) {
-    console.error('[TTS] Error:', error);
+    console.error('[TTS] Unhandled error:', error);
     const details = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       { error: 'TTS Generation Failed', details },

@@ -10,46 +10,6 @@ type ListenButtonProps = {
 };
 
 /**
- * BCP-47 language tags for browser SpeechSynthesis voice matching.
- * The browser picks the best available voice matching these tags.
- */
-const LANG_BCP47: Record<string, string> = {
-  english: "en-IN",
-  hindi: "hi-IN",
-  urdu: "ur-IN",
-  kannada: "kn-IN",
-  tamil: "ta-IN",
-  thamil: "ta-IN",
-  telugu: "te-IN",
-  malayalam: "ml-IN",
-};
-
-/**
- * Finds the best SpeechSynthesis voice for a given BCP-47 language code.
- * Priority: exact match > language prefix match > any available voice.
- */
-function findVoice(bcp47: string): SpeechSynthesisVoice | null {
-  const voices = speechSynthesis.getVoices();
-  if (voices.length === 0) return null;
-
-  const langPrefix = bcp47.split("-")[0]; // e.g. "hi" from "hi-IN"
-
-  // 1. Exact match (e.g. "hi-IN")
-  const exact = voices.find((v) => v.lang === bcp47);
-  if (exact) return exact;
-
-  // 2. Prefix match (e.g. "hi")
-  const prefix = voices.find((v) => v.lang.startsWith(langPrefix));
-  if (prefix) return prefix;
-
-  // 3. Any Indian variant
-  const indian = voices.find((v) => v.lang.endsWith("-IN"));
-  if (indian) return indian;
-
-  return null;
-}
-
-/**
  * Clean raw content text for TTS — strips markdown, bullets, excess whitespace.
  */
 function cleanTextForSpeech(raw: string): string {
@@ -60,6 +20,24 @@ function cleanTextForSpeech(raw: string): string {
     .replace(/^\s*[-•]\s*/gm, "")            // strip bullets
     .replace(/\s{2,}/g, " ")                 // collapse whitespace
     .trim();
+}
+
+/**
+ * Normalize language string — handles common variations.
+ */
+function normalizeLang(lang: string): string {
+  const map: Record<string, string> = {
+    english: "english",
+    hindi: "hindi",
+    kannada: "kannada",
+    tamil: "tamil",
+    thamil: "tamil",
+    telugu: "telugu",
+    thelugu: "telugu",
+    malayalam: "malayalam",
+    urdu: "urdu",
+  };
+  return map[lang.toLowerCase()] || "english";
 }
 
 export default function ListenButton({
@@ -74,10 +52,8 @@ export default function ListenButton({
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
 
   const audioElRef = useRef<HTMLAudioElement | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  const playModeRef = useRef<"browser" | "server" | null>(null);
 
   // Track mount state
   useEffect(() => {
@@ -91,12 +67,6 @@ export default function ListenButton({
 
   // ──────────── STOP ALL PLAYBACK ────────────
   const stopAll = useCallback(() => {
-    // Stop browser speech
-    if (speechSynthesis.speaking) {
-      speechSynthesis.cancel();
-    }
-    utteranceRef.current = null;
-
     // Stop audio element
     if (audioElRef.current) {
       audioElRef.current.pause();
@@ -109,8 +79,6 @@ export default function ListenButton({
       abortRef.current = null;
     }
 
-    playModeRef.current = null;
-
     if (mountedRef.current) {
       setIsPlaying(false);
       setIsLoading(false);
@@ -118,105 +86,26 @@ export default function ListenButton({
     }
   }, []);
 
-  // ──────────── ENGINE 1: Browser SpeechSynthesis ────────────
-  const playViaBrowser = useCallback(
-    (cleanText: string): Promise<boolean> => {
-      return new Promise((resolve) => {
-        const bcp47 = LANG_BCP47[language.toLowerCase()] || "en-IN";
-        const voice = findVoice(bcp47);
-
-        if (!voice) {
-          console.log("[TTS] No browser voice for", bcp47);
-          resolve(false);
-          return;
-        }
-
-        console.log("[TTS] Using browser voice:", voice.name, voice.lang);
-
-        // Truncate for browser TTS (browsers struggle with very long text)
-        const truncated = cleanText.length > 5000 ? cleanText.slice(0, 5000) + "..." : cleanText;
-
-        const utterance = new SpeechSynthesisUtterance(truncated);
-        utterance.voice = voice;
-        utterance.lang = bcp47;
-        utterance.rate = 0.95;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        utteranceRef.current = utterance;
-        playModeRef.current = "browser";
-
-        utterance.onstart = () => {
-          if (mountedRef.current) {
-            setIsPlaying(true);
-            setIsLoading(false);
-            setProgress("");
-          }
-        };
-
-        utterance.onend = () => {
-          if (mountedRef.current) {
-            setIsPlaying(false);
-            playModeRef.current = null;
-          }
-        };
-
-        utterance.onerror = (e) => {
-          console.warn("[TTS] Browser speech error:", e.error);
-          // "interrupted" is not a real error — user stopped it
-          if (e.error !== "interrupted" && e.error !== "canceled") {
-            resolve(false);
-            return;
-          }
-          if (mountedRef.current) {
-            setIsPlaying(false);
-            playModeRef.current = null;
-          }
-        };
-
-        // Chrome bug: voices sometimes aren't loaded yet
-        // Retry with a small delay if speech doesn't start
-        const startTimeout = setTimeout(() => {
-          if (!speechSynthesis.speaking && mountedRef.current) {
-            console.warn("[TTS] Browser speech didn't start, falling back");
-            speechSynthesis.cancel();
-            resolve(false);
-          }
-        }, 2000);
-
-        utterance.onstart = () => {
-          clearTimeout(startTimeout);
-          if (mountedRef.current) {
-            setIsPlaying(true);
-            setIsLoading(false);
-            setProgress("");
-          }
-          resolve(true); // Speech started successfully
-        };
-
-        speechSynthesis.speak(utterance);
-      });
-    },
-    [language]
-  );
-
-  // ──────────── ENGINE 2: Server Edge TTS ────────────
+  // ──────────── GENERATE & PLAY VIA GEMINI TTS API ────────────
   const playViaServer = useCallback(
     async (cleanText: string): Promise<boolean> => {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      // Limit text to prevent excessive processing
-      const truncated = cleanText.length > 4000 ? cleanText.slice(0, 4000) : cleanText;
+      const normalizedLang = normalizeLang(language);
 
-      setProgress("Generating audio...");
+      // Truncate for TTS (keep under API limit)
+      const truncated = cleanText.length > 6000 ? cleanText.slice(0, 6000) : cleanText;
 
-      const timeoutId = setTimeout(() => controller.abort(), 90_000);
+      setProgress("Generating AI audio...");
+
+      const timeoutId = setTimeout(() => controller.abort(), 120_000); // 2 min timeout
 
       try {
         const response = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: truncated, language }),
+          body: JSON.stringify({ text: truncated, language: normalizedLang }),
           signal: controller.signal,
         });
 
@@ -238,22 +127,26 @@ export default function ListenButton({
           throw new Error("Server didn't return audio");
         }
 
-        // Create a proper blob with explicit MIME type
+        // Create audio blob
         const arrayBuffer = await response.arrayBuffer();
         if (arrayBuffer.byteLength < 100) {
-          throw new Error("Audio too small");
+          throw new Error("Audio response too small");
         }
 
         const blob = new Blob([arrayBuffer], { type: contentType });
         const url = URL.createObjectURL(blob);
 
-        if (mountedRef.current) {
-          setAudioSrc(url);
-          playModeRef.current = "server";
+        // Clean up previous audio URL
+        if (audioSrc) {
+          URL.revokeObjectURL(audioSrc);
         }
 
-        // Wait a tick for the audio element to get the new src
-        await new Promise((r) => setTimeout(r, 100));
+        if (mountedRef.current) {
+          setAudioSrc(url);
+        }
+
+        // Wait for the audio element to pick up the new src
+        await new Promise((r) => setTimeout(r, 150));
 
         // Play through the DOM audio element
         if (audioElRef.current && mountedRef.current) {
@@ -261,9 +154,9 @@ export default function ListenButton({
           audioElRef.current.muted = false;
           try {
             await audioElRef.current.play();
-          } catch (playError: any) {
-            console.warn("[TTS] Autoplay prevented by browser. User must click play manually.", playError);
-            // Still return true because the audio is loaded and the controls are visible!
+          } catch (playError: unknown) {
+            console.warn("[TTS] Autoplay blocked by browser. User can click the player controls.", playError);
+            // Still return true — audio is loaded, user can manually play
           }
           return true;
         }
@@ -272,17 +165,17 @@ export default function ListenButton({
       } catch (err: unknown) {
         clearTimeout(timeoutId);
         if (err instanceof DOMException && err.name === "AbortError") {
-          return false; // user cancelled
+          return false; // user cancelled or timeout
         }
         throw err;
       }
     },
-    [language]
+    [language, audioSrc]
   );
 
   // ──────────── MAIN TOGGLE HANDLER ────────────
   const handleToggle = useCallback(async () => {
-    // If playing, stop
+    // If playing or loading, stop
     if (isPlaying || isLoading) {
       stopAll();
       return;
@@ -298,9 +191,6 @@ export default function ListenButton({
         throw new Error("No readable text");
       }
 
-      // ── ALWAYS USE ENGINE 2: Server Gemini TTS ──
-      // Bypassing browser SpeechSynthesis because it silently fails on many devices
-      // and the user specifically requested to use the Gemini model for generation.
       if (!mountedRef.current) return;
       setProgress("Generating AI audio...");
 
@@ -312,10 +202,10 @@ export default function ListenButton({
           setIsLoading(false);
           setProgress("");
         }
-        return; // 🎉 Success via server
+        return;
       }
 
-      throw new Error("Could not play audio");
+      throw new Error("Could not generate audio. Please try again.");
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       const msg = err instanceof Error ? err.message : "Audio failed";
@@ -324,10 +214,11 @@ export default function ListenButton({
       setIsLoading(false);
       setProgress("");
     }
-  }, [isPlaying, isLoading, text, stopAll, playViaBrowser, playViaServer]);
+  }, [isPlaying, isLoading, text, stopAll, playViaServer]);
 
   // Determine visual state
   const showError = error && !isPlaying && !isLoading;
+  const langLabel = normalizeLang(language);
 
   return (
     <div className={`inline-flex flex-col gap-2 ${className}`}>
@@ -343,8 +234,8 @@ export default function ListenButton({
             ? "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/15"
             : "border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-500 hover:text-white"
         } cursor-pointer`}
-        title={showError ? error : isPlaying ? "Stop" : isLoading ? progress : "Listen to content"}
-        aria-label={isPlaying ? "Stop audio" : "Listen to content"}
+        title={showError ? error : isPlaying ? "Stop" : isLoading ? progress : `Listen in ${langLabel}`}
+        aria-label={isPlaying ? "Stop audio" : `Listen to content in ${langLabel}`}
       >
         {isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -373,7 +264,7 @@ export default function ListenButton({
         )}
       </button>
 
-      {/* Single Native Audio Element — user can manually play/seek/adjust volume if autoplay fails */}
+      {/* Native Audio Player — visible after audio is generated */}
       {audioSrc && (
         <audio
           ref={audioElRef}
@@ -382,7 +273,7 @@ export default function ListenButton({
           preload="auto"
           className="w-full max-w-xs h-10 mt-2 rounded-lg border border-border bg-background shadow-sm"
           onPlay={() => {
-            if (mountedRef.current && playModeRef.current === "server") {
+            if (mountedRef.current) {
               setIsPlaying(true);
               setIsLoading(false);
               setProgress("");
@@ -396,12 +287,11 @@ export default function ListenButton({
           onEnded={() => {
             if (mountedRef.current) {
               setIsPlaying(false);
-              playModeRef.current = null;
             }
           }}
           onError={() => {
-            if (mountedRef.current && playModeRef.current === "server") {
-              setError("Playback failed");
+            if (mountedRef.current) {
+              setError("Playback failed — try again");
               setIsPlaying(false);
               setIsLoading(false);
             }
